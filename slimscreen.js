@@ -1,5 +1,5 @@
 (function() {
-  let active = false, startX, startY, endX, endY, lastText = '';
+  let active = false, startX, startY, endX, endY, lastText = '', lastInsight = '';
   
   // Create UI elements
   const overlay = document.createElement('div');
@@ -54,58 +54,68 @@
         lastText = text;
         analyzeText(text);
       } else {
-        promptScreenshot();
+        captureScreenSnippet();
       }
       highlight.style.display = 'none';
       startX = undefined;
     }
   });
 
-  // Text analysis with Hugging Face (google/flan-t5-base)
+  // Text analysis with Hugging Face (facebook/bart-large-cnn)
   async function analyzeText(text) {
     try {
-      const response = await fetch('https://api-inference.huggingface.co/models/google/flan-t5-base', {
+      const response = await fetch('https://api-inference.huggingface.co/models/facebook/bart-large-cnn', {
         method: 'POST',
         headers: { 
-          'Authorization': 'Bearer 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', // Your token
+          'Authorization': 'Bearer hf_xxxxxxxxxxxxxxxxxxxxxxxxxx', // Your token
           'Content-Type': 'application/json' 
         },
-        body: JSON.stringify({ inputs: `Provide a simple explanation or definition: ${text}` })
+        body: JSON.stringify({ inputs: `Define or explain in context: ${text}` })
       });
       const data = await response.json();
-      const insight = Array.isArray(data) ? data[0]?.generated_text : 'No insight available';
-      showOverlay(insight || `Words: ${text.split(' ').length}`);
+      const insight = Array.isArray(data) ? data[0]?.summary_text : 'No insight available';
+      lastInsight = insight || `Words: ${text.split(' ').length}`;
+      showOverlay(lastInsight);
     } catch (e) {
       showOverlay('Error: Try again later');
     }
   }
 
-  // Screenshot prompt
-  function promptScreenshot() {
-    overlay.innerHTML = 'Paste screenshot (Ctrl+V) for analysis';
-    overlay.style.display = 'block';
-    document.addEventListener('paste', (e) => {
-      const img = e.clipboardData.items[0]?.getAsFile();
-      if (img) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          canvas.width = 300; canvas.height = 200;
-          const ctx = canvas.getContext('2d');
-          const image = new Image();
-          image.onload = () => {
-            ctx.drawImage(image, 0, 0, 300, 200);
-            analyzeImage(canvas.toDataURL());
-          };
-          image.src = reader.result;
-        };
-        reader.readAsDataURL(img);
-      }
-    }, { once: true });
+  // Capture screen snippet
+  function captureScreenSnippet() {
+    const rect = { x: Math.min(startX, endX), y: Math.min(startY, endY), width: Math.abs(endX - startX), height: Math.abs(endY - startY) };
+    html2canvas(document.body, { x: rect.x, y: rect.y, width: rect.width, height: rect.height }).then(canvas => {
+      const base64 = canvas.toDataURL();
+      Tesseract.recognize(base64, 'eng').then(({ data }) => {
+        const text = data.text.trim();
+        if (text) {
+          lastText = text;
+          analyzeText(text);
+        } else {
+          analyzeImage(base64);
+        }
+      }).catch(() => analyzeImage(base64));
+    });
   }
 
-  // Placeholder image analysis
-  function analyzeImage(base64) {
-    showOverlay('Image analysis coming soon!');
+  // Image analysis with Hugging Face CLIP
+  async function analyzeImage(base64) {
+    try {
+      const response = await fetch('https://api-inference.huggingface.co/models/openai/clip-vit-base-patch32', {
+        method: 'POST',
+        headers: { 
+          'Authorization': 'Bearer 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', // Your token
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ inputs: base64, parameters: { task: 'image-to-text' } })
+      });
+      const data = await response.json();
+      const insight = Array.isArray(data) ? data[0]?.generated_text : 'Image: No text detected';
+      lastInsight = insight;
+      showOverlay(insight);
+    } catch (e) {
+      showOverlay('Image: Analysis failed');
+    }
   }
 
   // Show overlay with options
@@ -113,15 +123,16 @@
     overlay.innerHTML = `${text}<br><button id="slim-copy">Copy</button> <button id="slim-save">Save</button> <button id="slim-ask">Ask</button>`;
     overlay.style.display = 'block';
     document.getElementById('slim-copy').onclick = () => navigator.clipboard.writeText(text);
-    document.getElementById('slim-save').onclick = () => saveText(text);
+    document.getElementById('slim-save').onclick = () => saveText(lastText, text);
     document.getElementById('slim-ask').onclick = () => askQuestion();
   }
 
-  function saveText(text) {
+  function saveText(original, insight) {
+    const dialogue = `Highlighted: ${original}\nInsight: ${insight}`;
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-    a.download = 'slimscreen_insight.txt';
-    a.click(); // Browser prompts save location
+    a.href = URL.createObjectURL(new Blob([dialogue], { type: 'text/plain' }));
+    a.download = 'slimscreen_dialogue.txt';
+    a.click();
   }
 
   function askQuestion() {
