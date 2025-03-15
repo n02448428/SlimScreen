@@ -4,7 +4,7 @@
   // Create UI elements
   const overlay = document.createElement('div');
   overlay.id = 'slim-overlay';
-  overlay.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.7);color:white;padding:10px;max-width:400px;display:none;z-index:9999;';
+  overlay.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.7);color:white;padding:10px;max-width:400px;max-height:300px;overflow-y:auto;display:none;z-index:9999;';
   
   const toolbar = document.createElement('div');
   toolbar.id = 'slim-toolbar';
@@ -61,20 +61,20 @@
     }
   });
 
-  // Text analysis with Hugging Face (google/flan-t5-base)
+  // Text analysis with Hugging Face (EleutherAI/gpt-neo-125m)
   async function analyzeText(text, isInitial = false) {
     try {
       const depth = isInitial ? 1 : dialogueHistory.filter(d => d.type === 'insight').length + 1;
       const prompt = isInitial 
-        ? `Explain in detail: ${text}`
-        : `Based on "${lastText}", elaborate more on "${text}" (conversation depth: ${depth})`;
-      const response = await fetch('https://api-inference.huggingface.co/models/google/flan-t5-base', {
+        ? `Explain this in detail like a fun friend: ${text}`
+        : `Hey buddy, based on "${lastText}", tell me more about "${text}" in a fun way (chat level: ${depth})`;
+      const response = await fetch('https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125m', {
         method: 'POST',
         headers: { 
           'Authorization': 'Bearer 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', 
           'Content-Type': 'application/json' 
         },
-        body: JSON.stringify({ inputs: prompt })
+        body: JSON.stringify({ inputs: prompt, parameters: { max_length: 100 } })
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
@@ -84,7 +84,7 @@
       dialogueHistory.push({ type: 'insight', text: lastInsight });
       showOverlay(lastInsight);
     } catch (e) {
-      showOverlay(`Error: ${e.message}`);
+      showOverlay(`Error: ${e.message} - Try again soon!`);
     }
   }
 
@@ -105,7 +105,7 @@
       logging: true 
     }).then(canvas => {
       const base64 = canvas.toDataURL('image/png');
-      Tesseract.recognize(base64, 'eng').then(({ data }) => {
+      Tesseract.recognize(base64, 'eng', { logger: m => console.log(m) }).then(({ data }) => {
         const text = data.text.trim();
         if (text) {
           lastText = text;
@@ -133,7 +133,7 @@
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      const insight = Array.isArray(data) ? data[0]?.generated_text : 'Image: No text or details detected';
+      const insight = Array.isArray(data) ? data[0]?.generated_text : 'Image: No details detected';
       lastInsight = insight;
       dialogueHistory.push({ type: 'highlight', text: 'Image snippet' });
       dialogueHistory.push({ type: 'insight', text: insight });
@@ -148,7 +148,7 @@
     overlay.innerHTML = `${text}<br><button id="slim-copy">Copy</button> <button id="slim-save">Save</button>`;
     const input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = 'Ask me anything about: ' + lastText.slice(0, 20) + '...';
+    input.placeholder = 'Chat with me about: ' + lastText.slice(0, 20) + '...';
     input.style.cssText = 'width:90%;margin-top:5px;padding:2px;';
     overlay.appendChild(input);
     overlay.style.display = 'block';
@@ -159,10 +159,11 @@
         analyzeText(input.value, false);
       }
     };
+    input.focus();
   }
 
   function saveText() {
-    const dialogue = dialogueHistory.map(d => `${d.type === 'highlight' ? 'Highlighted' : d.type === 'question' ? 'You Asked' : 'Insight'}: ${d.text}`).join('\n');
+    const dialogue = dialogueHistory.map(d => `${d.type === 'highlight' ? 'Highlighted' : d.type === 'question' ? 'You Asked' : 'Buddy Said'}: ${d.text}`).join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([dialogue], { type: 'text/plain' }));
     a.download = 'slimscreen_full_dialogue.txt';
