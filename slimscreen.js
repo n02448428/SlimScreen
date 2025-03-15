@@ -1,10 +1,10 @@
 (function() {
-  let active = false, startX, startY, endX, endY, lastText = '', lastInsight = '';
+  let active = false, startX, startY, endX, endY, lastText = '', lastInsight = '', dialogueHistory = [];
   
   // Create UI elements
   const overlay = document.createElement('div');
   overlay.id = 'slim-overlay';
-  overlay.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.7);color:white;padding:10px;max-width:300px;display:none;z-index:9999;';
+  overlay.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.7);color:white;padding:10px;max-width:400px;display:none;z-index:9999;';
   
   const toolbar = document.createElement('div');
   toolbar.id = 'slim-toolbar';
@@ -13,7 +13,7 @@
   
   const highlight = document.createElement('div');
   highlight.id = 'slim-highlight';
-  highlight.style.cssText = 'position:absolute;border:2px dashed red;pointer-events:none;display:none;z-index:9998;';
+  highlight.style.cssText = 'position:fixed;border:2px dashed red;pointer-events:none;display:none;z-index:9998;';
   
   const canvas = document.createElement('canvas');
   canvas.id = 'slim-screenshot';
@@ -41,8 +41,8 @@
   document.addEventListener('mousemove', (e) => {
     if (startX !== undefined) {
       endX = e.clientX; endY = e.clientY;
-      highlight.style.left = Math.min(startX, endX) + 'px';
-      highlight.style.top = Math.min(startY, endY) + 'px';
+      highlight.style.left = (Math.min(startX, endX) + window.scrollX) + 'px';
+      highlight.style.top = (Math.min(startY, endY) + window.scrollY) + 'px';
       highlight.style.width = Math.abs(endX - startX) + 'px';
       highlight.style.height = Math.abs(endY - startY) + 'px';
     }
@@ -52,7 +52,7 @@
       const text = document.getSelection().toString().trim();
       if (text) {
         lastText = text;
-        analyzeText(text);
+        analyzeText(text, true);
       } else {
         captureScreenSnippet();
       }
@@ -62,20 +62,26 @@
   });
 
   // Text analysis with Hugging Face (google/flan-t5-base)
-  async function analyzeText(text) {
+  async function analyzeText(text, isInitial = false) {
     try {
+      const depth = isInitial ? 1 : dialogueHistory.filter(d => d.type === 'insight').length + 1;
+      const prompt = isInitial 
+        ? `Explain in detail: ${text}`
+        : `Based on "${lastText}", elaborate more on "${text}" (conversation depth: ${depth})`;
       const response = await fetch('https://api-inference.huggingface.co/models/google/flan-t5-base', {
         method: 'POST',
         headers: { 
-          'Authorization': 'Bearer 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', // Your token
+          'Authorization': 'Bearer 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', 
           'Content-Type': 'application/json' 
         },
-        body: JSON.stringify({ inputs: `Explain: ${text}` }) // Simpler prompt
+        body: JSON.stringify({ inputs: prompt })
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       const insight = Array.isArray(data) ? data[0]?.generated_text : 'No insight available';
       lastInsight = insight || `Words: ${text.split(' ').length}`;
+      dialogueHistory.push({ type: isInitial ? 'highlight' : 'question', text });
+      dialogueHistory.push({ type: 'insight', text: lastInsight });
       showOverlay(lastInsight);
     } catch (e) {
       showOverlay(`Error: ${e.message}`);
@@ -84,18 +90,33 @@
 
   // Capture screen snippet
   function captureScreenSnippet() {
-    const rect = { x: Math.min(startX, endX), y: Math.min(startY, endY), width: Math.abs(endX - startX), height: Math.abs(endY - startY) };
-    html2canvas(document.body, { x: rect.x, y: rect.y, width: rect.width, height: rect.height, useCORS: true }).then(canvas => {
-      const base64 = canvas.toDataURL();
+    const rect = { 
+      x: Math.min(startX, endX) + window.scrollX, 
+      y: Math.min(startY, endY) + window.scrollY, 
+      width: Math.abs(endX - startX), 
+      height: Math.abs(endY - startY) 
+    };
+    html2canvas(document.body, { 
+      x: rect.x, 
+      y: rect.y, 
+      width: rect.width, 
+      height: rect.height, 
+      useCORS: true, 
+      logging: true 
+    }).then(canvas => {
+      const base64 = canvas.toDataURL('image/png');
       Tesseract.recognize(base64, 'eng').then(({ data }) => {
         const text = data.text.trim();
         if (text) {
           lastText = text;
-          analyzeText(text);
+          analyzeText(text, true);
         } else {
           analyzeImage(base64);
         }
-      }).catch(() => analyzeImage(base64));
+      }).catch(e => {
+        console.error('Tesseract error:', e);
+        analyzeImage(base64);
+      });
     }).catch(e => showOverlay(`Capture Error: ${e.message}`));
   }
 
@@ -105,51 +126,47 @@
       const response = await fetch('https://api-inference.huggingface.co/models/openai/clip-vit-base-patch32', {
         method: 'POST',
         headers: { 
-          'Authorization': 'Bearer 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', // Your token
+          'Authorization': 'Bearer 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', 
           'Content-Type': 'application/json' 
         },
         body: JSON.stringify({ inputs: base64 })
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      const insight = Array.isArray(data) ? data[0]?.generated_text : 'Image: No text detected';
+      const insight = Array.isArray(data) ? data[0]?.generated_text : 'Image: No text or details detected';
       lastInsight = insight;
+      dialogueHistory.push({ type: 'highlight', text: 'Image snippet' });
+      dialogueHistory.push({ type: 'insight', text: insight });
       showOverlay(insight);
     } catch (e) {
       showOverlay(`Image Error: ${e.message}`);
     }
   }
 
-  // Show overlay with options
+  // Show overlay with auto-ask input
   function showOverlay(text) {
-    overlay.innerHTML = `${text}<br><button id="slim-copy">Copy</button> <button id="slim-save">Save</button> <button id="slim-ask">Ask</button>`;
-    overlay.style.display = 'block';
-    document.getElementById('slim-copy').onclick = () => navigator.clipboard.writeText(text);
-    document.getElementById('slim-save').onclick = () => saveText(lastText, text);
-    document.getElementById('slim-ask').onclick = () => askQuestion();
-  }
-
-  function saveText(original, insight) {
-    const dialogue = `Highlighted: ${original}\nInsight: ${insight}`;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([dialogue], { type: 'text/plain' }));
-    a.download = 'slimscreen_dialogue.txt';
-    a.click();
-  }
-
-  function askQuestion() {
+    overlay.innerHTML = `${text}<br><button id="slim-copy">Copy</button> <button id="slim-save">Save</button>`;
     const input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = 'Ask about: ' + lastText.slice(0, 20) + '...';
+    input.placeholder = 'Ask me anything about: ' + lastText.slice(0, 20) + '...';
     input.style.cssText = 'width:90%;margin-top:5px;padding:2px;';
     overlay.appendChild(input);
-    input.focus();
+    overlay.style.display = 'block';
+    document.getElementById('slim-copy').onclick = () => navigator.clipboard.writeText(text);
+    document.getElementById('slim-save').onclick = () => saveText();
     input.onkeydown = (e) => {
       if (e.key === 'Enter' && input.value) {
-        analyzeText(`${lastText}\nQuestion: ${input.value}`);
-        input.remove();
+        analyzeText(input.value, false);
       }
     };
+  }
+
+  function saveText() {
+    const dialogue = dialogueHistory.map(d => `${d.type === 'highlight' ? 'Highlighted' : d.type === 'question' ? 'You Asked' : 'Insight'}: ${d.text}`).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([dialogue], { type: 'text/plain' }));
+    a.download = 'slimscreen_full_dialogue.txt';
+    a.click();
   }
 
   // Draggable toolbar
