@@ -4,16 +4,16 @@
   // Create UI elements
   const overlay = document.createElement('div');
   overlay.id = 'slim-overlay';
-  overlay.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.7);color:white;padding:10px;max-width:300px;display:none;';
+  overlay.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.7);color:white;padding:10px;max-width:300px;display:none;z-index:9999;';
   
   const toolbar = document.createElement('div');
   toolbar.id = 'slim-toolbar';
-  toolbar.style.cssText = 'position:fixed;bottom:10px;right:10px;background:#333;color:white;padding:5px;cursor:move;';
+  toolbar.style.cssText = 'position:fixed;bottom:10px;right:10px;background:#333;color:white;padding:5px;cursor:move;font-size:14px;z-index:9999;';
   toolbar.textContent = 'SlimScreen: Off';
   
   const highlight = document.createElement('div');
   highlight.id = 'slim-highlight';
-  highlight.style.cssText = 'position:absolute;border:2px dashed red;pointer-events:none;display:none;';
+  highlight.style.cssText = 'position:absolute;border:2px dashed red;pointer-events:none;display:none;z-index:9998;';
   
   const canvas = document.createElement('canvas');
   canvas.id = 'slim-screenshot';
@@ -25,7 +25,7 @@
   document.body.appendChild(canvas);
 
   // Toggle function
-  window.slimScreenToggle = () => {
+  window.slimScreenToggle = function() {
     active = !active;
     toolbar.textContent = `SlimScreen: ${active ? 'On' : 'Off'}`;
     toolbar.style.display = 'block';
@@ -59,33 +59,42 @@
 
   // Text analysis with Hugging Face
   async function analyzeText(text) {
-    const response = await fetch('https://api-inference.huggingface.co/models/distilbert-base-uncased', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer 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', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ inputs: `Explain simply: ${text}` })
-    });
-    const data = await response.json();
-    showOverlay(data[0]?.generated_text || `Words: ${text.split(' ').length}`);
+    try {
+      const response = await fetch('https://api-inference.huggingface.co/models/distilbert-base-uncased', {
+        method: 'POST',
+        headers: { 
+          'Authorization': 'Bearer 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', // Replace with your token
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ inputs: `Explain simply: ${text}` })
+      });
+      const data = await response.json();
+      showOverlay(data[0]?.generated_text || `Words: ${text.split(' ').length}`);
+    } catch (e) {
+      showOverlay('Error: Try again later');
+    }
   }
 
-  // Screenshot prompt (MVP)
+  // Screenshot prompt
   function promptScreenshot() {
     overlay.innerHTML = 'Paste screenshot (Ctrl+V) for analysis';
     overlay.style.display = 'block';
     document.addEventListener('paste', (e) => {
-      const img = e.clipboardData.items[0].getAsFile();
-      const reader = new FileReader();
-      reader.onload = () => {
-        canvas.width = 300; canvas.height = 200;
-        const ctx = canvas.getContext('2d');
-        const image = new Image();
-        image.onload = () => {
-          ctx.drawImage(image, 0, 0, 300, 200);
-          analyzeImage(canvas.toDataURL());
+      const img = e.clipboardData.items[0]?.getAsFile();
+      if (img) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          canvas.width = 300; canvas.height = 200;
+          const ctx = canvas.getContext('2d');
+          const image = new Image();
+          image.onload = () => {
+            ctx.drawImage(image, 0, 0, 300, 200);
+            analyzeImage(canvas.toDataURL());
+          };
+          image.src = reader.result;
         };
-        image.src = reader.result;
-      };
-      reader.readAsDataURL(img);
+        reader.readAsDataURL(img);
+      }
     }, { once: true });
   }
 
@@ -96,14 +105,19 @@
 
   // Show overlay with options
   function showOverlay(text) {
-    overlay.innerHTML = `${text}<br><button onclick="navigator.clipboard.writeText('${text}')">Copy</button> <button onclick="saveText('${text}')">Save</button> <button onclick="askQuestion()">Ask</button>`;
+    const escapedText = text.replace(/'/g, "\\'").replace(/"/g, '\\"');
+    overlay.innerHTML = `${text}<br><button id="slim-copy">Copy</button> <button id="slim-save">Save</button> <button id="slim-ask">Ask</button>`;
     overlay.style.display = 'block';
+    document.getElementById('slim-copy').onclick = () => navigator.clipboard.writeText(text);
+    document.getElementById('slim-save').onclick = () => saveText(text);
+    document.getElementById('slim-ask').onclick = askQuestion;
   }
 
   function saveText(text) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-    a.download = 'insight.txt'; a.click();
+    a.download = 'insight.txt';
+    a.click();
   }
 
   function askQuestion() {
