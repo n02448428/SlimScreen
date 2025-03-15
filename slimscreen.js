@@ -1,0 +1,1 @@
+javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://github.com/n02448428/SlimScreen/slimscreen.js';document.body.appendChild(s);window.slimScreenLoaded=true;}else{window.slimScreenToggle();}})()
