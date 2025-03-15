@@ -1,8 +1,9 @@
 (function() {
   let active = false, startX, startY, endX, endY, lastText = '', lastInsight = '', dialogueHistory = [];
-  const HF_TOKEN = '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'; // Replace with your token locally
+  const HF_TOKEN = localStorage.getItem('hf_token') || prompt('Enter your Hugging Face token (get one free at huggingface.co/settings/tokens):') || 'NO_TOKEN_PROVIDED';
+  if (HF_TOKEN !== 'NO_TOKEN_PROVIDED' && !localStorage.getItem('hf_token')) localStorage.setItem('hf_token', HF_TOKEN);
   
-  // Create UI elements
+  // UI elements
   const overlay = document.createElement('div');
   overlay.id = 'slim-overlay';
   overlay.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.7);color:white;padding:10px;max-width:400px;max-height:200px;overflow-y:auto;display:none;z-index:9999;';
@@ -25,7 +26,7 @@
   document.body.appendChild(highlight);
   document.body.appendChild(canvas);
 
-  // Event listener functions
+  // Event listeners
   function onMouseDown(e) {
     if (active && e.ctrlKey && e.shiftKey) {
       startX = e.clientX; startY = e.clientY;
@@ -61,7 +62,6 @@
     }
   }
 
-  // Toggle function
   window.slimScreenToggle = function() {
     active = !active;
     toolbar.textContent = `SlimScreen: ${active ? 'On' : 'Off'}`;
@@ -78,14 +78,19 @@
     }
   };
 
-  // Text analysis with Hugging Face
+  // Text analysis with fallback
   async function analyzeText(text, isInitial = false) {
+    if (HF_TOKEN === 'NO_TOKEN_PROVIDED') {
+      showOverlay('Please provide a Hugging Face token to continue!');
+      return;
+    }
     try {
       const depth = isInitial ? 1 : dialogueHistory.filter(d => d.type === 'insight').length + 1;
       const prompt = isInitial 
         ? `Summarize this briefly in a warm, librarian-like tone: ${text}`
         : `Based on "${lastText}", explain "${text}" in a kind, concise librarian tone (step ${depth})`;
-      const response = await fetch('https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125m', {
+      const url = 'https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125m';
+      let response = await fetch(url, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${HF_TOKEN}`, 
@@ -94,8 +99,18 @@
         body: JSON.stringify({ inputs: prompt, parameters: { max_length: 75, temperature: 0.7 } })
       });
       if (!response.ok) {
-        if (response.status === 500) throw new Error('Server busy, retrying...');
-        throw new Error(`HTTP ${response.status}`);
+        if (response.status === 503 || response.status === 500) {
+          showOverlay('Server busy, trying a lighter model...');
+          response = await fetch('https://api-inference.huggingface.co/models/distilbert-base-uncased', {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Bearer ${HF_TOKEN}`, 
+              'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ inputs: prompt })
+          });
+        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
       }
       const data = await response.json();
       const insight = Array.isArray(data) ? data[0]?.generated_text : 'No insight available';
@@ -104,15 +119,10 @@
       dialogueHistory.push({ type: 'insight', text: lastInsight });
       showOverlay(lastInsight);
     } catch (e) {
-      if (e.message.includes('500')) {
-        setTimeout(() => analyzeText(text, isInitial), 2000); // Retry after 2s
-      } else {
-        showOverlay(`Error: ${e.message} - Check token or try later!`);
-      }
+      showOverlay(`Error: ${e.message} - Check token or try later!`);
     }
   }
 
-  // Capture screen snippet
   function captureScreenSnippet() {
     const rect = { 
       x: Math.min(startX, endX) + window.scrollX, 
@@ -144,7 +154,6 @@
     }).catch(e => showOverlay(`Capture Error: ${e.message}`));
   }
 
-  // Image analysis with Hugging Face CLIP
   async function analyzeImage(base64) {
     try {
       const response = await fetch('https://api-inference.huggingface.co/models/openai/clip-vit-base-patch32', {
@@ -167,7 +176,6 @@
     }
   }
 
-  // Show overlay with auto-ask input
   function showOverlay(text) {
     overlay.innerHTML = `${text}<br><button id="slim-copy">Copy</button> <button id="slim-save">Save</button>`;
     const input = document.createElement('input');
@@ -198,7 +206,6 @@
     a.click();
   }
 
-  // Draggable toolbar
   let dragX, dragY;
   toolbar.addEventListener('mousedown', (e) => {
     dragX = e.clientX - toolbar.offsetLeft;
