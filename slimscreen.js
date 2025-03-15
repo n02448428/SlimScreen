@@ -61,7 +61,7 @@
   async function analyzeText(text) {
     const response = await fetch('https://api-inference.huggingface.co/models/distilbert-base-uncased', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer hf_xxxxxxxxxxxxxxxxxxxxxxxxxx', 'Content-Type': 'application/json' },
+      headers: { 'Authorization': 'Bearer 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', 'Content-Type': 'application/json' },
       body: JSON.stringify({ inputs: `Explain simply: ${text}` })
     });
     const data = await response.json();
