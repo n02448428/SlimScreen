@@ -5,11 +5,13 @@
   <style>
     body { margin: 0; font-family: Arial, sans-serif; background: #f0f0f0; }
     h3 { text-align: center; padding: 20px; color: #333; }
+    p { text-align: center; }
+    code { background: #ddd; padding: 2px 5px; }
   </style>
 </head>
 <body>
   <h3>SlimScreen: Drag the bookmarklet to your bar to start!</h3>
-  <p style="text-align:center;">Bookmarklet: <code>javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://username.github.io/slimscreen/slimscreen.js';document.body.appendChild(s);window.slimScreenLoaded=true;}else{window.slimScreenToggle();}})()</code></p>
+  <p>Bookmarklet: <code>javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://n02448428.github.io/SlimScreen/slimscreen.js';s.onload=function(){window.slimScreenLoaded=true;window.slimScreenToggle();};document.body.appendChild(s);}else{window.slimScreenToggle();}})()</code></p>
   <script src="slimscreen.js"></script>
 </body>
 </html>
