@@ -1,5 +1,6 @@
 (function() {
   let active = false, startX, startY, endX, endY, lastText = '', lastInsight = '', dialogueHistory = [];
+  const HF_TOKEN = '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'; // Replace with your token locally
   
   // Create UI elements
   const overlay = document.createElement('div');
@@ -46,7 +47,8 @@
 
   function onMouseUp(e) {
     if (startX !== undefined) {
-      const text = document.getSelection().toString().trim();
+      const selection = window.getSelection();
+      const text = selection.toString().trim();
       if (text) {
         lastText = text;
         analyzeText(text, true);
@@ -55,6 +57,7 @@
       }
       highlight.style.display = 'none';
       startX = undefined;
+      selection.removeAllRanges();
     }
   }
 
@@ -75,22 +78,25 @@
     }
   };
 
-  // Text analysis with Hugging Face (EleutherAI/gpt-neo-125m)
+  // Text analysis with Hugging Face
   async function analyzeText(text, isInitial = false) {
     try {
       const depth = isInitial ? 1 : dialogueHistory.filter(d => d.type === 'insight').length + 1;
       const prompt = isInitial 
-        ? `Hello! Explain this like a friendly librarian would: ${text}`
-        : `Hi again! Based on "${lastText}", tell me more about "${text}" like a kind librarian (step ${depth})`;
+        ? `Summarize this briefly in a warm, librarian-like tone: ${text}`
+        : `Based on "${lastText}", explain "${text}" in a kind, concise librarian tone (step ${depth})`;
       const response = await fetch('https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125m', {
         method: 'POST',
         headers: { 
-          'Authorization': 'Bearer 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', 
+          'Authorization': `Bearer ${HF_TOKEN}`, 
           'Content-Type': 'application/json' 
         },
-        body: JSON.stringify({ inputs: prompt, parameters: { max_length: 150, temperature: 0.7 } })
+        body: JSON.stringify({ inputs: prompt, parameters: { max_length: 75, temperature: 0.7 } })
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        if (response.status === 500) throw new Error('Server busy, retrying...');
+        throw new Error(`HTTP ${response.status}`);
+      }
       const data = await response.json();
       const insight = Array.isArray(data) ? data[0]?.generated_text : 'No insight available';
       lastInsight = insight || `Words: ${text.split(' ').length}`;
@@ -98,7 +104,11 @@
       dialogueHistory.push({ type: 'insight', text: lastInsight });
       showOverlay(lastInsight);
     } catch (e) {
-      showOverlay(`Error: ${e.message} - Try again soon!`);
+      if (e.message.includes('500')) {
+        setTimeout(() => analyzeText(text, isInitial), 2000); // Retry after 2s
+      } else {
+        showOverlay(`Error: ${e.message} - Check token or try later!`);
+      }
     }
   }
 
@@ -140,7 +150,7 @@
       const response = await fetch('https://api-inference.huggingface.co/models/openai/clip-vit-base-patch32', {
         method: 'POST',
         headers: { 
-          'Authorization': 'Bearer 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', 
+          'Authorization': `Bearer ${HF_TOKEN}`, 
           'Content-Type': 'application/json' 
         },
         body: JSON.stringify({ inputs: base64 })
@@ -168,11 +178,11 @@
     overlay.style.display = 'block';
     document.getElementById('slim-copy').onclick = () => navigator.clipboard.writeText(text);
     document.getElementById('slim-save').onclick = () => saveText();
-    input.onkeydown = (e) => {
+    input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && input.value) {
         analyzeText(input.value, false);
       }
-    };
+    });
     input.focus();
   }
 
