@@ -1,5 +1,5 @@
 (function() {
-  let active = false, startX, startY, endX, endY;
+  let active = false, startX, startY, endX, endY, lastText = '';
   
   // Create UI elements
   const overlay = document.createElement('div');
@@ -49,27 +49,32 @@
   });
   document.addEventListener('mouseup', (e) => {
     if (startX !== undefined) {
-      const text = document.getSelection().toString();
-      if (text) analyzeText(text);
-      else promptScreenshot();
+      const text = document.getSelection().toString().trim();
+      if (text) {
+        lastText = text;
+        analyzeText(text);
+      } else {
+        promptScreenshot();
+      }
       highlight.style.display = 'none';
       startX = undefined;
     }
   });
 
-  // Text analysis with Hugging Face
+  // Text analysis with Hugging Face (google/flan-t5-base)
   async function analyzeText(text) {
     try {
-      const response = await fetch('https://api-inference.huggingface.co/models/distilbert-base-uncased', {
+      const response = await fetch('https://api-inference.huggingface.co/models/google/flan-t5-base', {
         method: 'POST',
         headers: { 
-          'Authorization': 'Bearer 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', // Replace with your token
+          'Authorization': 'Bearer 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', // Your token
           'Content-Type': 'application/json' 
         },
-        body: JSON.stringify({ inputs: `Explain simply: ${text}` })
+        body: JSON.stringify({ inputs: `Provide a simple explanation or definition: ${text}` })
       });
       const data = await response.json();
-      showOverlay(data[0]?.generated_text || `Words: ${text.split(' ').length}`);
+      const insight = Array.isArray(data) ? data[0]?.generated_text : 'No insight available';
+      showOverlay(insight || `Words: ${text.split(' ').length}`);
     } catch (e) {
       showOverlay('Error: Try again later');
     }
@@ -105,24 +110,33 @@
 
   // Show overlay with options
   function showOverlay(text) {
-    const escapedText = text.replace(/'/g, "\\'").replace(/"/g, '\\"');
     overlay.innerHTML = `${text}<br><button id="slim-copy">Copy</button> <button id="slim-save">Save</button> <button id="slim-ask">Ask</button>`;
     overlay.style.display = 'block';
     document.getElementById('slim-copy').onclick = () => navigator.clipboard.writeText(text);
     document.getElementById('slim-save').onclick = () => saveText(text);
-    document.getElementById('slim-ask').onclick = askQuestion;
+    document.getElementById('slim-ask').onclick = () => askQuestion();
   }
 
   function saveText(text) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-    a.download = 'insight.txt';
-    a.click();
+    a.download = 'slimscreen_insight.txt';
+    a.click(); // Browser prompts save location
   }
 
   function askQuestion() {
-    const q = prompt('Ask about this:');
-    if (q) analyzeText(q);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Ask about: ' + lastText.slice(0, 20) + '...';
+    input.style.cssText = 'width:90%;margin-top:5px;padding:2px;';
+    overlay.appendChild(input);
+    input.focus();
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter' && input.value) {
+        analyzeText(`${lastText}\nQuestion: ${input.value}`);
+        input.remove();
+      }
+    };
   }
 
   // Draggable toolbar
