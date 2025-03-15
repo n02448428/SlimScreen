@@ -4,7 +4,7 @@
   // Create UI elements
   const overlay = document.createElement('div');
   overlay.id = 'slim-overlay';
-  overlay.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.7);color:white;padding:10px;max-width:400px;max-height:300px;overflow-y:auto;display:none;z-index:9999;';
+  overlay.style.cssText = 'position:fixed;top:10px;left:10px;background:rgba(0,0,0,0.7);color:white;padding:10px;max-width:400px;min-height:100px;overflow-y:auto;display:none;z-index:9999;';
   
   const toolbar = document.createElement('div');
   toolbar.id = 'slim-toolbar';
@@ -41,8 +41,10 @@
   document.addEventListener('mousemove', (e) => {
     if (startX !== undefined) {
       endX = e.clientX; endY = e.clientY;
-      highlight.style.left = (Math.min(startX, endX) + window.scrollX) + 'px';
-      highlight.style.top = (Math.min(startY, endY) + window.scrollY) + 'px';
+      const scrollX = window.scrollX || window.pageXOffset;
+      const scrollY = window.scrollY || window.pageYOffset;
+      highlight.style.left = (Math.min(startX, endX)) + 'px';
+      highlight.style.top = (Math.min(startY, endY)) + 'px';
       highlight.style.width = Math.abs(endX - startX) + 'px';
       highlight.style.height = Math.abs(endY - startY) + 'px';
     }
@@ -66,15 +68,15 @@
     try {
       const depth = isInitial ? 1 : dialogueHistory.filter(d => d.type === 'insight').length + 1;
       const prompt = isInitial 
-        ? `Explain this in detail like a fun friend: ${text}`
-        : `Hey buddy, based on "${lastText}", tell me more about "${text}" in a fun way (chat level: ${depth})`;
+        ? `Hey there! Explain this like a chatty buddy in detail: ${text}`
+        : `Yo, based on "${lastText}", dive deeper into "${text}" like a fun friend (chat level: ${depth})`;
       const response = await fetch('https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125m', {
         method: 'POST',
         headers: { 
           'Authorization': 'Bearer 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', 
           'Content-Type': 'application/json' 
         },
-        body: JSON.stringify({ inputs: prompt, parameters: { max_length: 100 } })
+        body: JSON.stringify({ inputs: prompt, parameters: { max_length: 200, temperature: 0.9 } })
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
@@ -91,8 +93,8 @@
   // Capture screen snippet
   function captureScreenSnippet() {
     const rect = { 
-      x: Math.min(startX, endX) + window.scrollX, 
-      y: Math.min(startY, endY) + window.scrollY, 
+      x: Math.min(startX, endX), 
+      y: Math.min(startY, endY), 
       width: Math.abs(endX - startX), 
       height: Math.abs(endY - startY) 
     };
@@ -163,10 +165,14 @@
   }
 
   function saveText() {
+    const subject = lastText.split(' ')[0].replace(/[^a-zA-Z0-9]/g, '');
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+    const filename = `${subject}_${timestamp}.txt`;
     const dialogue = dialogueHistory.map(d => `${d.type === 'highlight' ? 'Highlighted' : d.type === 'question' ? 'You Asked' : 'Buddy Said'}: ${d.text}`).join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([dialogue], { type: 'text/plain' }));
-    a.download = 'slimscreen_full_dialogue.txt';
+    a.download = filename;
     a.click();
   }
 
