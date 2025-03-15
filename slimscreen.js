@@ -61,23 +61,24 @@
     }
   });
 
-  // Text analysis with Hugging Face (facebook/bart-large-cnn)
+  // Text analysis with Hugging Face (google/flan-t5-base)
   async function analyzeText(text) {
     try {
-      const response = await fetch('https://api-inference.huggingface.co/models/facebook/bart-large-cnn', {
+      const response = await fetch('https://api-inference.huggingface.co/models/google/flan-t5-base', {
         method: 'POST',
         headers: { 
-          'Authorization': 'Bearer hf_xxxxxxxxxxxxxxxxxxxxxxxxxx', // Your token
+          'Authorization': 'Bearer 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', // Your token
           'Content-Type': 'application/json' 
         },
-        body: JSON.stringify({ inputs: `Define or explain in context: ${text}` })
+        body: JSON.stringify({ inputs: `Define or explain this: ${text}` })
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      const insight = Array.isArray(data) ? data[0]?.summary_text : 'No insight available';
+      const insight = Array.isArray(data) ? data[0]?.generated_text : 'No insight available';
       lastInsight = insight || `Words: ${text.split(' ').length}`;
       showOverlay(lastInsight);
     } catch (e) {
-      showOverlay('Error: Try again later');
+      showOverlay(`Error: ${e.message}`);
     }
   }
 
@@ -107,14 +108,15 @@
           'Authorization': 'Bearer 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', // Your token
           'Content-Type': 'application/json' 
         },
-        body: JSON.stringify({ inputs: base64, parameters: { task: 'image-to-text' } })
+        body: JSON.stringify({ inputs: base64 })
       });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       const insight = Array.isArray(data) ? data[0]?.generated_text : 'Image: No text detected';
       lastInsight = insight;
       showOverlay(insight);
     } catch (e) {
-      showOverlay('Image: Analysis failed');
+      showOverlay(`Image Error: ${e.message}`);
     }
   }
 
