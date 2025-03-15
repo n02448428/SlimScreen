@@ -31,9 +31,9 @@
     toolbar.style.display = 'block';
   };
 
-  // Highlighting
+  // Highlighting with Ctrl + Shift
   document.addEventListener('mousedown', (e) => {
-    if (active && e.ctrlKey) {
+    if (active && e.ctrlKey && e.shiftKey) {
       startX = e.clientX; startY = e.clientY;
       highlight.style.display = 'block';
     }
@@ -70,7 +70,7 @@
           'Authorization': 'Bearer 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', // Your token
           'Content-Type': 'application/json' 
         },
-        body: JSON.stringify({ inputs: `Define or explain this: ${text}` })
+        body: JSON.stringify({ inputs: `Explain: ${text}` }) // Simpler prompt
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
@@ -85,7 +85,7 @@
   // Capture screen snippet
   function captureScreenSnippet() {
     const rect = { x: Math.min(startX, endX), y: Math.min(startY, endY), width: Math.abs(endX - startX), height: Math.abs(endY - startY) };
-    html2canvas(document.body, { x: rect.x, y: rect.y, width: rect.width, height: rect.height }).then(canvas => {
+    html2canvas(document.body, { x: rect.x, y: rect.y, width: rect.width, height: rect.height, useCORS: true }).then(canvas => {
       const base64 = canvas.toDataURL();
       Tesseract.recognize(base64, 'eng').then(({ data }) => {
         const text = data.text.trim();
@@ -96,7 +96,7 @@
           analyzeImage(base64);
         }
       }).catch(() => analyzeImage(base64));
-    });
+    }).catch(e => showOverlay(`Capture Error: ${e.message}`));
   }
 
   // Image analysis with Hugging Face CLIP
