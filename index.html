@@ -30,7 +30,7 @@
       margin-top: 15px;
       cursor: move;
     }
-    /* Librarian Widget styles (same as before) */
+    /* Librarian Widget styles */
     #librarian-widget {
       position: fixed;
       top: 10px;
@@ -43,6 +43,7 @@
       z-index: 9999;
       font-family: sans-serif;
       transition: width 0.3s, height 0.3s;
+      display: none;
     }
     #widget-header {
       cursor: move;
@@ -73,7 +74,7 @@
   <div id="welcome">
     <h1>Welcome to SlimScreen AI</h1>
     <p>
-      This tool acts as your friendly librarian, providing definitions, context, and insights on highlighted text. 
+      This tool acts as your friendly librarian, providing definitions, context, and insights on highlighted text.
       Simply highlight text on this page and press <strong>Ctrl + Shift + X</strong> to see the magic!
     </p>
     <p>
@@ -82,8 +83,8 @@
     <a id="bookmarklet" href="javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://slim-screen.vercel.app/slimscreen.js';s.onload=function(){window.slimScreenLoaded=true;window.slimScreenToggle();};document.body.appendChild(s);}else{window.slimScreenToggle();}})()">SlimScreen</a>
   </div>
 
-  <!-- Librarian Widget (initially hidden; can be toggled by the bookmarklet) -->
-  <div id="librarian-widget" style="display:none;">
+  <!-- Librarian Widget (initially hidden; toggled by bookmarklet) -->
+  <div id="librarian-widget">
     <div id="widget-header">
       <strong>Librarian</strong>
       <button id="widget-close" style="float: right;">X</button>

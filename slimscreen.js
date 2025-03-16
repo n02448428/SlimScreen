@@ -72,14 +72,15 @@
         // Send our prompt under "inputs"
         body: JSON.stringify({ inputs: prompt })
       });
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
       const result = await response.json();
+      if (!response.ok) {
+        // Return the error message from the API response if available
+        throw new Error(result.error || "Network response was not ok");
+      }
       return result;
     } catch (error) {
       console.error("Online inference error:", error);
-      return { error: "Online inference failed" };
+      return { error: error.message };
     }
   }
 
