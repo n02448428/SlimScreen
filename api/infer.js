@@ -1,7 +1,7 @@
 const fetch = require('node-fetch');
 
 module.exports = async (req, res) => {
-  // Using EleutherAI/gpt-neo-125M for generation
+  // Use EleutherAI/gpt-neo-125M for generation
   const apiUrl = 'https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125M';
   const token = process.env.HUGGINGFACE_TOKEN;
 
@@ -16,9 +16,15 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify(req.body)
     });
-    
+
     console.log("Hugging Face response status:", response.status);
-    
+
+    if (response.status === 503) {
+      console.error("Model endpoint returned 503 - Service Unavailable");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      return res.status(503).json({ error: "Model endpoint is temporarily unavailable. Please try again later." });
+    }
+
     const text = await response.text();
     let data;
     try {

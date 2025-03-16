@@ -1,11 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SlimScreen AI - Friendly Librarian</title>
   <style>
-    /* Widget container: fixed at top-left, initially compact */
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f0f0f0;
+      color: #333;
+    }
+    /* Welcome page styling */
+    #welcome {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    #bookmarklet {
+      display: inline-block;
+      background: #4a90e2;
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 4px;
+      text-decoration: none;
+      margin-top: 15px;
+      cursor: move;
+    }
+    /* Librarian Widget styles (same as before) */
     #librarian-widget {
       position: fixed;
       top: 10px;
@@ -19,27 +44,23 @@
       font-family: sans-serif;
       transition: width 0.3s, height 0.3s;
     }
-    /* Widget header (draggable area) */
     #widget-header {
       cursor: move;
       padding: 10px;
       background: #f7f7f7;
       border-bottom: 1px solid #ccc;
     }
-    /* Conversation area */
     #conversation {
       max-height: 200px;
       overflow-y: auto;
       padding: 10px;
       font-size: 0.9em;
     }
-    /* User input field */
     #user-input {
       width: calc(100% - 20px);
       margin: 10px;
       padding: 5px;
     }
-    /* Button container */
     #widget-buttons {
       padding: 0 10px 10px;
     }
@@ -49,8 +70,20 @@
   </style>
 </head>
 <body>
-  <!-- Librarian Widget -->
-  <div id="librarian-widget">
+  <div id="welcome">
+    <h1>Welcome to SlimScreen AI</h1>
+    <p>
+      This tool acts as your friendly librarian, providing definitions, context, and insights on highlighted text. 
+      Simply highlight text on this page and press <strong>Ctrl + Shift + X</strong> to see the magic!
+    </p>
+    <p>
+      To use SlimScreen on any webpage, drag the bookmarklet below to your bookmarks bar:
+    </p>
+    <a id="bookmarklet" href="javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://slim-screen.vercel.app/slimscreen.js';s.onload=function(){window.slimScreenLoaded=true;window.slimScreenToggle();};document.body.appendChild(s);}else{window.slimScreenToggle();}})()">SlimScreen</a>
+  </div>
+
+  <!-- Librarian Widget (initially hidden; can be toggled by the bookmarklet) -->
+  <div id="librarian-widget" style="display:none;">
     <div id="widget-header">
       <strong>Librarian</strong>
       <button id="widget-close" style="float: right;">X</button>

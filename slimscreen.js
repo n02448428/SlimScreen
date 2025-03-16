@@ -61,15 +61,15 @@
 
   // --- Online Inference ---
   async function runOnlineInference(text) {
-    // Construct a prompt that instructs the model to respond in a friendly librarian tone.
-    const prompt = "You are a friendly, polite female librarian who never uses bad words. Provide clear definitions, context, and insights in a warm, conversational tone. Answer the following: " + text;
+    // Construct prompt to instruct the model in a friendly librarian tone.
+    const prompt = "You are a friendly, polite female librarian who provides clear definitions, context, and insights. Never use bad words. Answer kindly: " + text;
     try {
       const response = await fetch('https://slim-screen.vercel.app/api/infer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        // Send our prompt under the key "inputs"
+        // Send our prompt under "inputs"
         body: JSON.stringify({ inputs: prompt })
       });
       if (!response.ok) {
