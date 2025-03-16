@@ -1,5 +1,6 @@
-(function() {
-  // --- Online Inference: Call your hosted proxy endpoint ---
+// Using an immediately-invoked async function expression
+(async () => {
+  // Run online inference by sending the payload to your Vercel proxy
   async function runOnlineInference(text) {
     try {
       const response = await fetch('https://slim-screen.vercel.app/api/infer', {
@@ -7,7 +8,8 @@
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ text: text })
+        // Note: Payload key changed from "text" to "inputs"
+        body: JSON.stringify({ inputs: text })
       });
       if (!response.ok) {
         throw new Error("Network response was not ok");
@@ -20,13 +22,15 @@
     }
   }
 
-  // --- Offline Inference: Load and run a local model via Transformers.js ---
+  // Offline inference using Transformers.js pipeline
   let summarizer = null;
 
   async function loadLocalModel() {
     try {
-      // Using a summarization pipeline with a lightweight model.
-      summarizer = await window.transformers.pipeline('summarization', 'sshleifer/distilbart-cnn-12-6');
+      // Import the pipeline function from the transformers library
+      // Since we're in a module, we can import it directly:
+      const { pipeline } = await import('@xenova/transformers');
+      summarizer = await pipeline('summarization', 'sshleifer/distilbart-cnn-12-6');
     } catch (error) {
       console.error("Error loading local model:", error);
     }
@@ -45,7 +49,7 @@
     }
   }
 
-  // --- Choose mode based on connectivity ---
+  // Decide which inference mode to use based on connectivity
   async function getInsight(text) {
     if (navigator.onLine) {
       console.log("Online mode detected. Running online inference.");
@@ -56,7 +60,7 @@
     }
   }
 
-  // --- Display the inference result in the overlay ---
+  // Display the result in the overlay
   function displayInsight(result) {
     const overlay = document.getElementById('insight-overlay');
     let content = "";
@@ -76,20 +80,19 @@
     overlay.innerHTML = content;
     overlay.style.display = 'block';
     
-    // Hide overlay automatically after 10 seconds (optional)
+    // Automatically hide overlay after 10 seconds
     setTimeout(() => {
       overlay.style.display = 'none';
     }, 10000);
   }
 
-  // --- Hotkey Listener: Ctrl + Shift + X ---
-  document.addEventListener('keydown', function(e) {
+  // Listen for the hotkey: Ctrl + Shift + X
+  document.addEventListener('keydown', async (e) => {
     if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
       const selectedText = window.getSelection().toString().trim();
       if (selectedText) {
-        getInsight(selectedText).then(result => {
-          displayInsight(result);
-        });
+        const result = await getInsight(selectedText);
+        displayInsight(result);
       } else {
         console.log("No text selected.");
       }
