@@ -1,10 +1,9 @@
 // Immediately-invoked function to isolate our scope
 (function() {
-  // --- Draggable Widget ---
+  // --- Draggable Widget Setup ---
   const widget = document.getElementById('librarian-widget');
   const header = document.getElementById('widget-header');
-  let isDragging = false;
-  let offsetX, offsetY;
+  let isDragging = false, offsetX, offsetY;
 
   header.addEventListener('mousedown', (e) => {
     isDragging = true;
@@ -26,7 +25,26 @@
   // --- Widget Close Button ---
   document.getElementById('widget-close').addEventListener('click', () => {
     widget.style.display = 'none';
+    updateBookmarkletText("Off");
   });
+
+  // --- Bookmarklet Toggle Function ---
+  window.slimScreenToggle = function() {
+    if (widget.style.display === 'none' || widget.style.display === '') {
+      widget.style.display = 'block';
+      updateBookmarkletText("On");
+    } else {
+      widget.style.display = 'none';
+      updateBookmarkletText("Off");
+    }
+  };
+
+  function updateBookmarkletText(state) {
+    const bm = document.getElementById('bookmarklet');
+    if (bm) {
+      bm.textContent = `SlimScreen: ${state}`;
+    }
+  }
 
   // --- Conversation Handling ---
   let conversationHistory = [];
@@ -59,22 +77,19 @@
     document.body.removeChild(a);
   });
 
-  // --- Online Inference ---
+  // --- Online Inference Function ---
   async function runOnlineInference(text) {
-    // Construct prompt for a friendly librarian tone.
+    // Construct a prompt to instruct the model with a friendly librarian tone.
     const prompt = "You are a friendly, polite female librarian who provides clear definitions, context, and insights. Never use bad words. Answer kindly: " + text;
     try {
       const response = await fetch('https://slim-screen.vercel.app/api/infer', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        // Send our prompt under "inputs"
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inputs: prompt })
       });
       const result = await response.json();
       if (!response.ok) {
-        // Return the error message from the API response if available
+        // If the API returned an error, throw it to be caught below.
         throw new Error(result.error || "Network response was not ok");
       }
       return result;
@@ -83,28 +98,6 @@
       return { error: error.message };
     }
   }
-
-  // --- Handle User Input for Follow-Up Questions ---
-  const userInput = document.getElementById('user-input');
-  userInput.addEventListener('keypress', async (e) => {
-    if (e.key === 'Enter') {
-      const query = userInput.value.trim();
-      if (query) {
-        appendMessage('User', query);
-        userInput.value = '';
-        const result = await runOnlineInference(query);
-        if (result.error) {
-          appendMessage('Librarian', result.error);
-        } else if (Array.isArray(result) && result[0].generated_text) {
-          appendMessage('Librarian', result[0].generated_text);
-        } else if (result.generated_text) {
-          appendMessage('Librarian', result.generated_text);
-        } else {
-          appendMessage('Librarian', JSON.stringify(result));
-        }
-      }
-    }
-  });
 
   // --- Hotkey for Highlighted Text (Ctrl+Shift+X) ---
   document.addEventListener('keydown', async (e) => {
@@ -128,12 +121,25 @@
     }
   });
 
-  // --- Expose toggle function for bookmarklet ---
-  window.slimScreenToggle = function() {
-    if (widget.style.display === 'none' || widget.style.display === '') {
-      widget.style.display = 'block';
-    } else {
-      widget.style.display = 'none';
+  // --- Handle Follow-Up Questions via Input Field ---
+  const userInput = document.getElementById('user-input');
+  userInput.addEventListener('keypress', async (e) => {
+    if (e.key === 'Enter') {
+      const query = userInput.value.trim();
+      if (query) {
+        appendMessage('User', query);
+        userInput.value = '';
+        const result = await runOnlineInference(query);
+        if (result.error) {
+          appendMessage('Librarian', result.error);
+        } else if (Array.isArray(result) && result[0].generated_text) {
+          appendMessage('Librarian', result[0].generated_text);
+        } else if (result.generated_text) {
+          appendMessage('Librarian', result.generated_text);
+        } else {
+          appendMessage('Librarian', JSON.stringify(result));
+        }
+      }
     }
-  };
+  });
 })();
