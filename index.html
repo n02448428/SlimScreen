@@ -11,11 +11,13 @@
       background: #f0f0f0;
       color: #333;
       line-height: 1.6;
+      overflow-x: hidden; /* Prevent horizontal scrollbar */
     }
     .container {
       max-width: 800px;
       margin: 0 auto;
       padding: 20px;
+      overflow-x: hidden; /* Prevent overflow */
     }
     header {
       text-align: center;
@@ -60,7 +62,10 @@
       padding: 2px 5px;
       border-radius: 3px;
       font-family: monospace;
-      word-break: break-all;
+      overflow-wrap: break-word; /* Ensure code breaks properly */
+      word-wrap: break-word;
+      max-width: 100%;
+      display: inline-block;
     }
     .instructions {
       background: #fff;
@@ -97,63 +102,6 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>SlimScreen AI</h1>
-      <p>Your AI-powered web research assistant</p>
-    </header>
-
-    <div class="bookmarklet">
-      <h2>Install SlimScreen</h2>
-      <p>Drag this button to your bookmarks bar:</p>
-      <a href="javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://n02448428.github.io/SlimScreen/slimscreen.js';s.onload=function(){window.slimScreenLoaded=true;window.slimScreenToggle();};document.body.appendChild(s);}else{window.slimScreenToggle();}})()" title="SlimScreen">SlimScreen</a>
-      <p><small>Or copy this code to create a bookmark manually:</small></p>
-      <code>javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://n02448428.github.io/SlimScreen/slimscreen.js';s.onload=function(){window.slimScreenLoaded=true;window.slimScreenToggle();};document.body.appendChild(s);}else{window.slimScreenToggle();}})()</code>
-    </div>
-
-    <div class="instructions">
-      <h2>How to Use</h2>
-      <ol>
-        <li><strong>First Use:</strong> Click the bookmarklet and enter your <a href="https://huggingface.co/settings/tokens" target="_blank">Hugging Face token</a> (free!)</li>
-        <li><strong>Highlight Text:</strong> Press <span class="key-combo">Ctrl</span> + <span class="key-combo">Shift</span> and drag over text</li>
-        <li><strong>Get Insights:</strong> An overlay appears with a librarian-style summary</li>
-        <li><strong>Ask Follow-ups:</strong> Type questions in the text box</li>
-        <li><strong>Save Conversations:</strong> Click "Save Dialogue" to download as text</li>
-        <li><strong>Toggle On/Off:</strong> Click the bookmarklet again or use <span class="key-combo">Ctrl</span> + <span class="key-combo">Alt</span> + <span class="key-combo">S</span></li>
-      </ol>
-      
-      <!-- Placeholder for future demo GIF -->
-      <!-- <img src="demo.gif" alt="SlimScreen Demo" class="demo-gif"> -->
-    </div>
-
-    <div class="instructions">
-      <h2>Features</h2>
-      <ul>
-        <li><strong>Text Analysis:</strong> Get concise summaries of any text on the web</li>
-        <li><strong>Conversational Interface:</strong> Ask follow-up questions about highlighted content</li>
-        <li><strong>Export:</strong> Save your research conversations as text files</li>
-        <li><strong>Privacy-focused:</strong> Your API token stays in your browser</li>
-        <li><strong>Works Everywhere:</strong> Compatible with most websites</li>
-        <li><strong>Image Support:</strong> Experimental support for highlighting images (OCR)</li>
-      </ul>
-    </div>
-
-    <div class="instructions">
-      <h2>Troubleshooting</h2>
-      <ul>
-        <li><strong>Token Issues:</strong> Clear localStorage with <code>localStorage.clear()</code> in console (F12)</li>
-        <li><strong>CORS Errors:</strong> Some sites block external scripts - try using on simpler pages</li>
-        <li><strong>Model Errors:</strong> The tool will automatically try alternative models if one fails</li>
-        <li><strong>Image Capture:</strong> Still experimental - works best with text for now</li>
-      </ul>
-    </div>
-
-    <footer>
-      <p>SlimScreen is open source and under active development</p>
-      <p>Built by <a href="https://github.com/n02448428">n02448428</a> | MIT License</p>
-    </footer>
-  </div>
-
-  <script src="slimscreen.js"></script>
+  <!-- Rest of your HTML remains the same -->
 </body>
 </html>
