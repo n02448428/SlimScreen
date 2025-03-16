@@ -2,7 +2,7 @@
   // --- Online Inference: Call your hosted proxy endpoint ---
   async function runOnlineInference(text) {
     try {
-      const response = await fetch('https://your-proxy-endpoint.com/infer', {
+      const response = await fetch('https://your-project.vercel.app/api/infer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -26,7 +26,6 @@
   async function loadLocalModel() {
     try {
       // Using a summarization pipeline with a lightweight model.
-      // The 'sshleifer/distilbart-cnn-12-6' model is a distilled version for speed and lower memory.
       summarizer = await window.transformers.pipeline('summarization', 'sshleifer/distilbart-cnn-12-6');
     } catch (error) {
       console.error("Error loading local model:", error);
@@ -65,8 +64,6 @@
     if (result.error) {
       content = `<p>Error: ${result.error}</p>`;
     } else {
-      // For online results, we expect an object with a 'summary' property.
-      // For local results, the summarizer returns an array of summaries.
       if (Array.isArray(result)) {
         content = `<p>${result[0].summary || JSON.stringify(result)}</p>`;
       } else if (result.summary) {
