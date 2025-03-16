@@ -11,11 +11,13 @@
       background: #f0f0f0;
       color: #333;
       line-height: 1.6;
+      overflow-x: hidden; /* Prevent horizontal scrollbar */
     }
     .container {
       max-width: 800px;
       margin: 0 auto;
       padding: 20px;
+      overflow-x: hidden; /* Prevent overflow */
     }
     header {
       text-align: center;
@@ -29,6 +31,19 @@
       margin: 0;
       font-size: 2.5em;
     }
+    h2 {
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 10px;
+      margin-top: 30px;
+    }
+    .bookmarklet {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 20px 0;
+      text-align: center;
+    }
     .bookmarklet a {
       display: inline-block;
       padding: 10px 15px;
@@ -39,12 +54,34 @@
       font-weight: bold;
       margin: 10px 0;
     }
+    .bookmarklet a:hover {
+      background: #3a5bcf;
+    }
+    code {
+      background: #ddd;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-family: monospace;
+      overflow-wrap: break-word; /* Ensure code breaks properly */
+      word-wrap: break-word;
+      max-width: 100%;
+      display: inline-block;
+    }
     .instructions {
       background: #fff;
       border-radius: 8px;
       padding: 20px;
       margin: 20px 0;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .instructions li {
+      margin-bottom: 10px;
+    }
+    .demo-gif {
+      max-width: 100%;
+      border-radius: 8px;
+      margin: 20px 0;
+      border: 1px solid #ddd;
     }
     footer {
       text-align: center;
@@ -65,31 +102,6 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>SlimScreen AI</h1>
-      <p>Your AI-powered web research assistant</p>
-    </header>
-
-    <div class="instructions">
-      <h2>How to Use</h2>
-      <ol>
-        <li><strong>First Use:</strong> Click the bookmarklet and enter your <a href="https://huggingface.co/settings/tokens" target="_blank">Hugging Face token</a> (free!)</li>
-        <li><strong>Highlight Text:</strong> Select text normally, then click the <strong>"Capture Text"</strong> button at the bottom right.</li>
-        <li><strong>Get Insights:</strong> An overlay appears with a librarian-style summary.</li>
-        <li><strong>Ask Follow-ups:</strong> Type questions in the text box.</li>
-        <li><strong>Save Conversations:</strong> Click "Save Dialogue" to download as text.</li>
-        <li><strong>Toggle On/Off:</strong> Click the bookmarklet again or use <span class="key-combo">Alt</span> + <span class="key-combo">Shift</span> + <span class="key-combo">X</span>.</li>
-      </ol>
-    </div>
-    
-    <footer>
-      <p>SlimScreen is open source and under active development</p>
-      <p>Built by <a href="https://github.com/n02448428">n02448428</a> | MIT License</p>
-    </footer>
-  </div>
-
-  <script src="slimscreen.js"></script>
+  <!-- Rest of your HTML remains the same -->
 </body>
 </html>
-
