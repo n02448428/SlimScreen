@@ -101,89 +101,62 @@
     showOverlay('Analyzing...'); // Show loading state
     
     try {
-      // CORS workaround - use local analysis instead of direct API call
-      // This is a temporary solution until a proper proxy can be implemented
       const depth = isInitial ? 1 : dialogueHistory.filter(d => d.type === 'insight').length + 1;
+      const prompt = isInitial 
+        ? `Summarize this briefly in a warm, librarian-like tone (about 50 words): ${text}`
+        : `Based on "${lastText.substring(0, 100)}...", explain "${text}" in a kind, concise librarian tone (step ${depth})`;
       
-      // Create insights locally when API fails
-      const wordCount = text.split(/\s+/).length;
-      const firstSentence = text.split(/[.!?]/, 1)[0].trim();
+      let models = [
+        'EleutherAI/gpt-neo-125m',
+        'distilbert-base-uncased',
+        'facebook/bart-large-cnn'
+      ];
       
-      // Generate a simple insight based on the text
-      let insight;
-      if (isInitial) {
-        insight = `This appears to be a passage with about ${wordCount} words. It begins with "${firstSentence}..." I notice this text discusses ${getKeyTopic(text)}. Would you like me to analyze a specific aspect?`;
-      } else {
-        insight = `Regarding your question about "${text}": Based on the highlighted text, I can see it relates to ${getKeyTopic(lastText)}. The text contains roughly ${wordCount} words and touches on ${getKeyThemes(text)}. Can I help with anything specific?`;
+      let insight = null;
+      
+      // Try models in sequence until one works
+      for (let model of models) {
+        try {
+          const url = `https://api-inference.huggingface.co/models/${model}`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Bearer ${HF_TOKEN}`, 
+              'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ 
+              inputs: prompt, 
+              parameters: { max_length: 75, temperature: 0.7 } 
+            })
+          });
+          
+          if (!response.ok) {
+            console.warn(`Model ${model} returned ${response.status}`);
+            continue; // Try next model
+          }
+          
+          const data = await response.json();
+          insight = Array.isArray(data) ? data[0]?.generated_text : data.generated_text;
+          if (insight) break; // Got a valid response
+        } catch (modelError) {
+          console.warn(`Error with model ${model}:`, modelError);
+          // Continue to next model
+        }
+      }
+      
+      // Fallback if all models failed
+      if (!insight) {
+        insight = `Words: ${text.split(' ').length} | Characters: ${text.length} | First bit: "${text.substring(0, 30)}..."`;
       }
       
       lastInsight = insight;
       dialogueHistory.push({ type: isInitial ? 'highlight' : 'question', text });
       dialogueHistory.push({ type: 'insight', text: lastInsight });
       showOverlay(lastInsight);
-      
-      // Try to call API in background for future improvement
-      tryApiInBackground(text, isInitial);
     } catch (e) {
       console.error('Analysis error:', e);
-      showOverlay(`I see you've selected some text (${text.length} characters). Due to current API limitations, I'm working in offline mode. You can still save this conversation and ask follow-up questions.`);
+      showOverlay(`Error: ${e.message} - Check token or try later! Fallback: Text is ${text.length} characters long.`);
     }
-  }
-  
-  // Helper function to try API in background without affecting the UI flow
-  function tryApiInBackground(text, isInitial) {
-    // This is for future implementation when API issues are resolved
-    // For now, just log the attempt
-    console.log('Background API call would happen here (disabled due to CORS)');
-  }
-  
-  // Helper functions to generate local insights
-  function getKeyTopic(text) {
-    const lowercaseText = text.toLowerCase();
-    
-    // Check for common topics
-    if (lowercaseText.includes('javascript') || lowercaseText.includes('html') || lowercaseText.includes('css')) {
-      return 'web development';
-    } else if (lowercaseText.includes('api') || lowercaseText.includes('token') || lowercaseText.includes('hugging face')) {
-      return 'API integration';
-    } else if (lowercaseText.includes('ai') || lowercaseText.includes('model') || lowercaseText.includes('analysis')) {
-      return 'artificial intelligence';
-    } else {
-      // Extract potential topics
-      const words = lowercaseText.split(/\s+/);
-      const nouns = words.filter(w => w.length > 4 && !['about', 'these', 'those', 'their', 'other'].includes(w));
-      
-      if (nouns.length > 0) {
-        // Pick a probable noun phrase
-        return nouns.slice(0, 2).join(' ');
-      } else {
-        return 'this particular subject';
-      }
-    }
-  }
-  
-  function getKeyThemes(text) {
-    const lowercaseText = text.toLowerCase();
-    let themes = [];
-    
-    // Check for question patterns
-    if (lowercaseText.includes('how') || lowercaseText.includes('what') || lowercaseText.includes('why')) {
-      themes.push('questions about process or method');
-    }
-    
-    if (lowercaseText.includes('error') || lowercaseText.includes('fix') || lowercaseText.includes('problem')) {
-      themes.push('troubleshooting');
-    }
-    
-    if (lowercaseText.includes('improve') || lowercaseText.includes('better') || lowercaseText.includes('enhance')) {
-      themes.push('optimization');
-    }
-    
-    if (themes.length === 0) {
-      themes.push('various aspects of the content');
-    }
-    
-    return themes.join(' and ');
   }
 
   // Improved image capture with better error handling
@@ -219,8 +192,8 @@
       
       // Check if Tesseract is available
       if (typeof Tesseract !== 'object' || typeof Tesseract.recognize !== 'function') {
-        showOverlay('Error: OCR library not loaded. Using local image analysis instead.');
-        analyzeImageLocally(base64);
+        showOverlay('Error: OCR library not loaded. Trying image analysis instead.');
+        analyzeImage(base64);
         return;
       }
       
@@ -232,11 +205,11 @@
           lastText = text;
           analyzeText(text, true);
         } else {
-          analyzeImageLocally(base64);
+          analyzeImage(base64);
         }
       }).catch(e => {
         console.error('Tesseract error:', e);
-        analyzeImageLocally(base64);
+        analyzeImage(base64);
       });
     }).catch(e => {
       console.error('Capture Error:', e);
@@ -244,14 +217,40 @@
     });
   }
 
-  function analyzeImageLocally(base64) {
-    // Simple local image analysis since API calls are failing
-    const insight = "I've captured this image. Due to current limitations, I can't analyze the content in detail, but I can see it's an image from this webpage. You can ask me questions about what you see in it.";
-    
-    lastInsight = insight;
-    dialogueHistory.push({ type: 'highlight', text: 'Image snippet' });
-    dialogueHistory.push({ type: 'insight', text: insight });
-    showOverlay(insight);
+  async function analyzeImage(base64) {
+    try {
+      const response = await fetch('https://api-inference.huggingface.co/models/openai/clip-vit-base-patch32', {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${HF_TOKEN}`, 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ inputs: { image: base64 } })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Handle CLIP model response structure
+      let insight = 'Image: No details detected';
+      if (data && Array.isArray(data)) {
+        const labels = data.map(item => item.label);
+        insight = `I see an image that might contain: ${labels.slice(0, 3).join(', ')}`;
+      } else if (data && data.label) {
+        insight = `I see an image that might be: ${data.label}`;
+      }
+      
+      lastInsight = insight;
+      dialogueHistory.push({ type: 'highlight', text: 'Image snippet' });
+      dialogueHistory.push({ type: 'insight', text: insight });
+      showOverlay(insight);
+    } catch (e) {
+      console.error('Image analysis error:', e);
+      showOverlay(`Image Error: ${e.message}. Try text selection instead.`);
+    }
   }
 
   function showOverlay(text) {
@@ -266,7 +265,7 @@
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'Ask follow-up question...';
-    input.style.cssText = 'width:calc(100% - 10px);margin-top:5px;padding:5px;border:none;border-radius:3px;';
+    input.style.cssText = 'width:100%;margin-top:5px;padding:5px;border:none;border-radius:3px;';
     overlay.appendChild(input);
     overlay.style.display = 'block';
     
