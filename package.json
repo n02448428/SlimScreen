@@ -1,5 +1,4 @@
-{
-  "name": "slimscreen",
+{"name": "slimscreen",
   "version": "1.0.0",
   "description": "SlimScreen AI is an elegant, hybrid AI-powered tool designed to provide contextual insights on highlighted text (and, experimentally, images) directly on your screen. With a friendly, librarian-like interface, it works seamlessly in both online and offline modes.",
   "main": "slimscreen.js",
@@ -18,6 +17,7 @@
   },
   "homepage": "https://github.com/n02448428/SlimScreen#readme",
   "dependencies": {
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "abort-controller": "^3.0.0"
   }
 }
