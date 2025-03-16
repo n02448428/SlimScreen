@@ -11,13 +11,13 @@ module.exports = async (req, res) => {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
+      // Forward the request body received from the client (which should contain "inputs")
       body: JSON.stringify(req.body)
     });
     const data = await response.json();
 
-    // Set CORS header before sending the response
+    // Set CORS header to allow requests from any origin
     res.setHeader("Access-Control-Allow-Origin", "*");
-
     res.status(200).json(data);
   } catch (error) {
     console.error("Proxy error:", error);
