@@ -1,10 +1,11 @@
 const fetch = require('node-fetch');
 
 module.exports = async (req, res) => {
-  const apiUrl = 'https://api-inference.huggingface.co/models/sshleifer/distilbart-cnn-12-6';
-  const token = process.env.HUGGINGFACE_TOKEN; // Ensure your token is correct
+  // Using EleutherAI/gpt-neo-125M for generation
+  const apiUrl = 'https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125M';
+  const token = process.env.HUGGINGFACE_TOKEN;
 
-  console.log("Request body received:", req.body);
+  console.log("Received request body:", req.body);
 
   try {
     const response = await fetch(apiUrl, {
@@ -17,8 +18,7 @@ module.exports = async (req, res) => {
     });
     
     console.log("Hugging Face response status:", response.status);
-
-    // Try to parse the response as JSON
+    
     const text = await response.text();
     let data;
     try {
