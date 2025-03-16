@@ -61,7 +61,7 @@
 
   // --- Online Inference ---
   async function runOnlineInference(text) {
-    // Construct prompt to instruct the model in a friendly librarian tone.
+    // Construct prompt for a friendly librarian tone.
     const prompt = "You are a friendly, polite female librarian who provides clear definitions, context, and insights. Never use bad words. Answer kindly: " + text;
     try {
       const response = await fetch('https://slim-screen.vercel.app/api/infer', {
@@ -126,4 +126,13 @@
       }
     }
   });
+
+  // --- Expose toggle function for bookmarklet ---
+  window.slimScreenToggle = function() {
+    if (widget.style.display === 'none' || widget.style.display === '') {
+      widget.style.display = 'block';
+    } else {
+      widget.style.display = 'none';
+    }
+  };
 })();
