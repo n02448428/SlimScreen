@@ -1,4 +1,4 @@
-**# README for SlimScreen AI **
+**# Updated README for SlimScreen AI**
 
 SlimScreen is an AI-powered bookmarklet that lets you highlight text on any webpage and get concise, librarian-style insights. Built for quick learning and exploration, it helps you understand content faster.
 
@@ -8,7 +8,7 @@ SlimScreen is an AI-powered bookmarklet that lets you highlight text on any webp
 - **Image Analysis**: Experimental support for capturing and analyzing images from webpages
 - **Conversational Interface**: Type questions in the overlay box → Keep chatting about your selection
 - **Save Dialogue**: Export your full conversation (highlight + questions + insights) as a timestamped .txt file
-- **Keyboard Shortcuts**: Toggle SlimScreen with `Ctrl + Alt + S`
+- **Keyboard Shortcuts**: Toggle SlimScreen with `Alt + Shift + X`
 - **Privacy-Focused**: Your API token stays in your browser's localStorage
 
 ## Installation
@@ -40,7 +40,7 @@ SlimScreen is an AI-powered bookmarklet that lets you highlight text on any webp
 
 ## Usage
 
-- **Toggle SlimScreen**: Click the bookmarklet or press `Ctrl + Alt + S`
+- **Toggle SlimScreen**: Click the bookmarklet or press `Alt + Shift + X`
 - **Highlight Text**: Select text normally (no dragging required)
 - **Capture Text**: Click the **"Capture Text"** button at the bottom right
 - **Get Insight**: An overlay appears with AI-generated summary
@@ -79,4 +79,5 @@ MIT License - Feel free to use, modify, and share.
 ## Contact
 
 - Issues? Ideas? File a [GitHub Issue](https://github.com/n02448428/SlimScreen/issues)
-- Built
+- Built by [n02448428](https://github.com/n02448428)
+
