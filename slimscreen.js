@@ -2,7 +2,7 @@
   // --- Online Inference: Call your hosted proxy endpoint ---
   async function runOnlineInference(text) {
     try {
-      const response = await fetch('https://your-project.vercel.app/api/infer', {
+      const response = await fetch('https://slim-screen.vercel.app/api/infer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
