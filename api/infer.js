@@ -1,22 +1,27 @@
 const fetch = require('node-fetch');
+const AbortController = require('abort-controller'); // ensure this is added to package.json
 
 module.exports = async (req, res) => {
-  // Use EleutherAI/gpt-neo-125M for generation
   const apiUrl = 'https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125M';
   const token = process.env.HUGGINGFACE_TOKEN;
 
   console.log("Received request body:", req.body);
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify(req.body),
+      signal: controller.signal
     });
 
+    clearTimeout(timeout);
     console.log("Hugging Face response status:", response.status);
 
     if (response.status === 503) {
