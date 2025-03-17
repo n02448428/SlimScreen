@@ -111,7 +111,7 @@
           const loadingId = showLoading();
           
           try {
-            const result = await runOnlineInference(query);
+            const result = await runInference(query);
             // Remove loading message
             removeLoading(loadingId);
             handleResult(result);
@@ -177,17 +177,14 @@
     }
   }
 
-  // --- Online Inference ---
-  const librarianInstruction = "You are a warm, friendly, and polite female librarian who always provides clear definitions, context, and concise insights. Never use bad words. Keep your responses brief unless follow-ups are requested.";
-  
-  async function runOnlineInference(text) {
+  // --- API Function (Combined Online/Offline) ---
+  // The system prompt is now kept on the server side only
+  async function runInference(text) {
     // Get the base URL dynamically
     const baseUrl = window.location.hostname === 'localhost' || 
-                    window.location.hostname === '127.0.0.1'
-                    ? 'http://localhost:3000/api/infer'
-                    : 'https://slim-screen.vercel.app/api/infer';
-                    
-    const prompt = librarianInstruction + " " + text;
+                   window.location.hostname === '127.0.0.1'
+                   ? 'http://localhost:3000/api/infer'
+                   : 'https://slim-screen.vercel.app/api/infer';
     
     try {
       // Add a timeout for the fetch operation
@@ -197,7 +194,7 @@
       const response = await fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inputs: prompt }),
+        body: JSON.stringify({ inputs: text }),
         signal: controller.signal
       });
       
@@ -217,30 +214,56 @@
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error("Online inference error:", error);
+      console.error("Inference error:", error);
       if (error.name === 'AbortError') {
         throw new Error("Request timed out. Please try again.");
+      } else if (!navigator.onLine) {
+        return { generated_text: "I'm currently in offline mode with limited functionality. Please check your connection and try again." };
       }
       throw new Error(error.message || "Failed to connect to inference API");
     }
   }
 
+  // --- Post-process API responses ---
   function handleResult(result) {
     if (result.error) {
       appendMessage('Librarian', `Sorry, I encountered an error: ${result.error}`);
     } else if (Array.isArray(result) && result[0]?.generated_text) {
-      appendMessage('Librarian', result[0].generated_text);
+      // Clean the response of any prompt repetition or artifacts
+      const cleanedText = cleanResponse(result[0].generated_text);
+      appendMessage('Librarian', cleanedText);
     } else if (result.generated_text) {
-      appendMessage('Librarian', result.generated_text);
+      // Clean the response of any prompt repetition or artifacts
+      const cleanedText = cleanResponse(result.generated_text);
+      appendMessage('Librarian', cleanedText);
     } else {
       appendMessage('Librarian', "I received an unexpected response format. Please try again.");
     }
   }
 
-  // --- Offline Fallback Mode (using a simpler model) ---
-  function getOfflineResponse(text) {
-    // Extremely simple fallback
-    return "I'm currently in offline mode with limited functionality. Please check your connection and try again.";
+  // Clean up responses to remove prompt leakage or code artifacts
+  function cleanResponse(text) {
+    // Remove any leaked prompt instructions
+    const promptPattern = /You are a warm, friendly, and polite female librarian[^]*?\. /;
+    let cleaned = text.replace(promptPattern, '');
+    
+    // Remove any code-like artifacts that might appear
+    const codeArtifacts = /[A-Za-z]+::[A-Za-z]+\([^)]*\)[^;]*;|Console\.[A-Za-z]+\([^)]*\);|[A-Za-z]+Exception\(\);/g;
+    cleaned = cleaned.replace(codeArtifacts, '');
+    
+    // Remove any remaining strange patterns
+    const strangePatterns = /FANT[A-Za-z]+::[^;]*;|Result = [^;]*;/g;
+    cleaned = cleaned.replace(strangePatterns, '');
+    
+    // Trim extra whitespace
+    cleaned = cleaned.trim();
+    
+    // If we've removed everything, provide a fallback
+    if (!cleaned) {
+      cleaned = "I'm sorry, I couldn't generate a proper response. Could you rephrase your question?";
+    }
+    
+    return cleaned;
   }
 
   // --- Hotkey for Highlighted Text (Ctrl+Shift+X) ---
@@ -259,7 +282,7 @@
         const loadingId = showLoading();
         
         try {
-          const result = await runOnlineInference(selectedText);
+          const result = await runInference(selectedText);
           removeLoading(loadingId);
           handleResult(result);
         } catch (error) {

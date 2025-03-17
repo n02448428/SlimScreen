@@ -14,6 +14,9 @@ module.exports = async (req, res) => {
 
   const apiUrl = 'https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125M';
   const token = process.env.HUGGINGFACE_TOKEN;
+  
+  // System prompt moved to server-side only to prevent leakage
+  const librarianInstruction = "You are a warm, friendly, and polite female librarian who always provides clear definitions, context, and concise insights. Never use bad words. Keep your responses brief unless follow-ups are requested. RESPOND ONLY WITH NATURAL LANGUAGE. DO NOT OUTPUT CODE OR TECHNICAL ARTIFACTS. ";
 
   if (!token) {
     console.error("HUGGINGFACE_TOKEN is not set in environment variables");
@@ -25,11 +28,16 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: "Missing required 'inputs' field" });
   }
 
-  console.log("Received request body:", req.body);
+  // Prepend the system instruction to the user's input
+  const fullPrompt = {
+    inputs: librarianInstruction + req.body.inputs
+  };
+
+  console.log("Processing request with sanitized prompt");
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000); // Reduced timeout to 25 seconds
+    const timeout = setTimeout(() => controller.abort(), 25000); // 25 second timeout
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -37,7 +45,7 @@ module.exports = async (req, res) => {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(fullPrompt),
       signal: controller.signal
     });
 
@@ -47,6 +55,13 @@ module.exports = async (req, res) => {
     if (response.status === 503) {
       console.error("Model endpoint returned 503 - Service Unavailable");
       return res.status(503).json({ error: "Model endpoint is temporarily unavailable. Please try again later." });
+    }
+
+    if (!response.ok) {
+      console.error(`API error: ${response.status} ${response.statusText}`);
+      return res.status(response.status).json({ 
+        error: `Hugging Face API error: ${response.statusText}` 
+      });
     }
 
     let data;
