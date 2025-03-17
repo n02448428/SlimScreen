@@ -46,24 +46,26 @@
             top: 10px !important;
             left: 10px !important;
             width: 320px !important;
-            background: #fff !important;
-            border: 2px solid #4a90e2 !important;
+            background: rgba(255, 255, 255, 0.85) !important;
+            backdrop-filter: blur(5px) !important;
+            border: 1px solid rgba(74, 144, 226, 0.7) !important;
             border-radius: 8px !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
             z-index: 9999999 !important;
             transition: width 0.3s, height 0.3s !important;
             color: #333 !important;
             font-size: 14px !important;
+            display: none !important; /* Hide by default */
           }
           #widget-header {
             cursor: move !important;
-            padding: 10px 15px !important;
-            background: #4a90e2 !important;
-            border-bottom: 1px solid #3a80d2 !important;
+            padding: 8px 12px !important;
+            background: rgba(74, 144, 226, 0.8) !important;
+            border-radius: 7px 7px 0 0 !important;
           }
           #widget-header strong {
             color: #fff !important;
-            font-size: 16px !important;
+            font-size: 14px !important;
             font-weight: bold !important;
           }
           #widget-close {
@@ -76,10 +78,10 @@
             font-size: 16px !important;
           }
           #conversation {
-            max-height: 300px !important;
+            max-height: 250px !important;
             overflow-y: auto !important;
-            padding: 15px !important;
-            background: #fff !important;
+            padding: 12px !important;
+            background: transparent !important;
           }
           #conversation div {
             margin-bottom: 8px !important;
@@ -90,29 +92,39 @@
             color: #333 !important;
           }
           #user-input {
-            width: calc(100% - 30px) !important;
-            margin: 10px 15px !important;
-            padding: 8px !important;
-            border: 1px solid #ccc !important;
+            width: calc(100% - 24px) !important;
+            margin: 8px 12px !important;
+            padding: 6px !important;
+            border: 1px solid rgba(204, 204, 204, 0.6) !important;
             border-radius: 4px !important;
             font-size: 14px !important;
             color: #333 !important;
+            background: rgba(255, 255, 255, 0.7) !important;
           }
           #widget-buttons {
-            padding: 0 15px 15px !important;
+            padding: 0 12px 12px !important;
+            display: flex !important;
+            justify-content: space-between !important;
           }
           #widget-buttons button {
-            background: #4a90e2 !important;
+            background: rgba(74, 144, 226, 0.8) !important;
             color: #fff !important;
             border: none !important;
-            padding: 6px 12px !important;
+            padding: 4px 10px !important;
             border-radius: 4px !important;
             cursor: pointer !important;
-            margin-right: 8px !important;
-            font-size: 14px !important;
+            font-size: 12px !important;
+            flex: 1 !important;
+            margin: 0 4px !important;
+          }
+          #widget-buttons button:first-child {
+            margin-left: 0 !important;
+          }
+          #widget-buttons button:last-child {
+            margin-right: 0 !important;
           }
           #widget-buttons button:hover {
-            background: #3a80d2 !important;
+            background: rgba(58, 128, 210, 0.9) !important;
           }
         `;
         document.head.appendChild(style);
@@ -128,8 +140,8 @@
         <div id="conversation"></div>
         <input id="user-input" type="text" placeholder="Ask me anything..." />
         <div id="widget-buttons">
-          <button id="copy-conversation">Copy Conversation</button>
-          <button id="save-conversation">Save Conversation</button>
+          <button id="copy-conversation">Copy</button>
+          <button id="save-conversation">Save</button>
         </div>
       `;
       document.body.appendChild(widget);
@@ -288,10 +300,19 @@
           const loadingId = showLoading();
           
           try {
-            const result = await runInference(query);
+            // NEW: Handle common greetings locally to avoid strange responses
+            const response = handleLocalResponse(query) || await runInference(query);
+            
             // Remove loading message
             removeLoading(loadingId);
-            handleResult(result);
+            
+            if (typeof response === 'string') {
+              // It's a local response
+              appendMessage('Librarian', response);
+            } else {
+              // It's an API response
+              handleResult(response);
+            }
           } catch (error) {
             // Remove loading message and show error
             removeLoading(loadingId);
@@ -303,6 +324,59 @@
         }
       }
     });
+  }
+
+  // --- NEW: Handle common queries locally ---
+  function handleLocalResponse(query) {
+    const lowerQuery = query.toLowerCase().trim();
+    
+    // Simple greeting patterns
+    if (/^(hi|hello|hey|greetings|howdy)(\s.*)?$/.test(lowerQuery)) {
+      return "Hello! How can I help you today?";
+    }
+    
+    // How are you patterns
+    if (/^(how are you|how's it going|how are things|what's up)(\?)?$/.test(lowerQuery)) {
+      return "I'm doing well, thank you for asking! How can I assist you?";
+    }
+    
+    // Thank you patterns
+    if (/^(thank you|thanks|thx|ty)(\s.*)?$/.test(lowerQuery)) {
+      return "You're welcome! Let me know if you need anything else.";
+    }
+    
+    // Goodbye patterns
+    if (/^(bye|goodbye|see you|cya|farewell)(\s.*)?$/.test(lowerQuery)) {
+      return "Goodbye! Feel free to come back if you have more questions.";
+    }
+    
+    // Who are you patterns
+    if (/^(who are you|what are you)(\?)?$/.test(lowerQuery)) {
+      return "I'm your friendly librarian assistant. I can help with definitions, explanations, and answering questions.";
+    }
+    
+    // Common commands
+    if (/^(help|commands|options)$/.test(lowerQuery)) {
+      return "You can ask me for definitions, highlight text with Ctrl+Shift+X, or ask me any questions. I'm here to assist you!";
+    }
+    
+    // Test pattern
+    if (/^(test|testing)$/.test(lowerQuery)) {
+      return "I'm working properly! How can I help you?";
+    }
+    
+    // For activate command
+    if (/^(activate|start|begin)$/.test(lowerQuery)) {
+      return "I'm active and ready to help. What can I assist you with?";
+    }
+    
+    // For bookmarklet command
+    if (/^(bookmarklet)$/.test(lowerQuery)) {
+      return "The bookmarklet allows you to activate me on any webpage. You can drag it to your bookmarks bar for easy access.";
+    }
+    
+    // No local response available
+    return null;
   }
 
   // --- Loading Indicator ---
@@ -489,7 +563,7 @@
     cleaned = cleaned.replace(codeArtifacts, '');
     
     // Remove strange patterns and random phrases
-    const strangePatterns = /FANT[A-Za-z]+::[^;]*;|Result = [^;]*;|DONT forget about receipts|Urban journals\./g;
+    const strangePatterns = /FANT[A-Za-z]+::[^;]*;|Result = [^;]*;|DONT forget about receipts|Urban journals\.|It is not my face, but a face that bothers me\.|To a space, a space adjacent to hello\.|For the past 14 years\.|Your book's digital RSS feed\./g;
     cleaned = cleaned.replace(strangePatterns, '');
     
     // Remove any responses that repeat the word "librarian" multiple times
@@ -513,9 +587,10 @@
       }
     }
     
-    // If we've removed everything, provide a fallback
-    if (!cleaned || cleaned.length < 5) {
-      cleaned = "Here's a brief definition of that term. Please let me know if you need more information.";
+    // If we've removed everything or if the response is too strange, provide a fallback
+    if (!cleaned || cleaned.length < 5 || 
+        /could you provide more context|I'm not sure what you mean|I'd need more information/.test(cleaned)) {
+      cleaned = "I understand. Let me know if you need help with anything specific.";
     }
     
     return cleaned;
@@ -565,12 +640,7 @@
     }
   });
 
-  // Initialize the widget if this script is loaded directly
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    ensureWidget();
-  } else {
-    document.addEventListener('DOMContentLoaded', ensureWidget);
-  }
+  // Do NOT automatically initialize widget - wait for bookmarklet click
   
   // Signal that SlimScreen is loaded
   window.slimScreenLoaded = true;
