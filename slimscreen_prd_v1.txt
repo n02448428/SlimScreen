@@ -1,0 +1,219 @@
+Product Requirements Document (PRD) for SlimScreen AI
+1. Overview
+
+Product Name:
+SlimScreen AI
+
+Purpose:
+SlimScreen AI is a lightweight, browser-native, AI-powered tool that transforms any webpage into an interactive learning companion. It lets users highlight text (and eventually images) to receive concise, context-aware insights, definitions, and follow-up answers delivered in a consistently warm, friendly librarian tone. With our backend hosted on Vercel (managing all tokens securely), the tool requires no token input from users.
+
+Vision:
+Create an unobtrusive, efficient solution that provides immediate AI-driven insights on any webpage—enabling users to learn, research, and explore without leaving their current browsing experience.
+
+Status:
+MVP in progress – Core text features are implemented, with image capture and refined selection alignment planned for future iterations.
+2. Target Audience
+
+    Students:
+    Individuals who need quick explanations or context for complex topics while browsing educational content.
+
+    Researchers:
+    Users looking for summaries, definitions, or additional context on web articles and academic resources.
+
+    Casual Learners:
+    Curious browsers who want more insight into content from news, blogs, or Wikipedia.
+
+    Developers & Open-Source Enthusiasts:
+    Users who appreciate lightweight, extendable tools that work directly in the browser.
+
+3. Goals and Objectives
+
+Primary Objectives:
+
+    Immediate AI Insights:
+    Allow users to highlight text on any webpage and press a hotkey (Ctrl+Shift+X) or use an input field to receive AI-powered insights in a friendly, librarian-like tone.
+
+    Consistent Tone:
+    Ensure that every AI response is delivered in a warm, polite style without requiring repeated instructions from the user.
+
+    Seamless Experience:
+    Provide a toggleable widget that can be injected on any webpage via a bookmarklet, without the user needing to handle tokens—the backend on Vercel securely manages all authentication.
+
+    Conversation Logging & Actions:
+    Maintain a conversation log within the widget and offer the ability to copy or save the conversation history as a text file.
+
+Secondary Objectives:
+
+    Future Image Capture:
+    Expand functionality to analyze images via OCR and provide descriptive insights.
+    Enhanced Selection Alignment:
+    Improve precision of text selections, especially on dynamic or scrolled pages.
+    Scalability & Performance:
+    Ensure responsiveness and minimal resource usage across modern browsers.
+
+4. Features and Functionality
+4.1 Core Features (MVP)
+
+    Text Highlighting & Hotkey Trigger:
+        Description:
+        Users highlight text on any webpage and press Ctrl+Shift+X.
+        Output:
+        The highlighted text is captured and sent to the AI for processing.
+        Technical Approach:
+        Uses window.getSelection() to obtain text and hotkey event listeners for triggering.
+
+    Toggleable Widget & Bookmarklet Injection:
+        Description:
+        A bookmarklet can be dragged to the bookmarks bar; when clicked, it injects (or toggles) the SlimScreen widget on any page.
+        Output:
+        The widget appears at the top-left of the page with updated toggle status ("SlimScreen: On/Off").
+        Technical Approach:
+        Dynamically inject widget HTML into the page if not present; global function (window.slimScreenToggle) manages the widget’s visibility.
+
+    Conversational AI Response:
+        Description:
+        Upon activation, the widget sends a query (highlighted text or input) to the backend.
+        Output:
+        The AI returns a concise response (approximately one to two lines for first queries, longer for follow-ups) in a warm, friendly librarian tone.
+        Technical Approach:
+        Prepend a constant system prompt to every query before forwarding it to the backend, which uses Hugging Face’s inference API (EleutherAI/gpt-neo-125M) hosted on Vercel. The prompt ensures consistent tone.
+
+    Follow-Up Conversational Ask:
+        Description:
+        Users type additional questions in an input field within the widget.
+        Output:
+        The conversation log updates with both user queries and AI responses.
+        Technical Approach:
+        Sequential API calls continue the dialogue, with conversation history maintained client-side.
+
+    Copy and Save Conversation:
+        Description:
+        Buttons in the widget allow users to copy the entire conversation to their clipboard or download it as a .txt file.
+        Output:
+        The conversation history is copied (without clearing the clipboard) or saved as a text file only when conversation data exists.
+        Technical Approach:
+        Utilizes the Clipboard API and Blob URL generation, with error handling for security restrictions.
+
+4.2 In-Progress / Future Features
+
+    Image Capture & Analysis:
+        Description:
+        Allow selection of image areas to extract text via OCR or generate descriptive context.
+        Status:
+        Work in progress (using html2canvas, Tesseract.js, and CLIP-based models).
+
+    Refined Selection Alignment:
+        Description:
+        Improve the accuracy of the selection overlay, particularly on scrolled pages.
+        Status:
+        Under refinement; adjustments to scroll offsets and bounding calculations are planned.
+
+4.3 Non-Functional Requirements
+
+    Performance:
+    Must run quickly, with hotkey responses and widget toggling happening instantly.
+    Scalability:
+    Designed as a lightweight client-side tool (targeting a runtime footprint of around 5 MB) with minimal external dependencies.
+    Security:
+    The backend (Vercel) manages the Hugging Face API token securely; no token input is required from the user.
+    Compatibility:
+    Works on modern browsers (Chrome, Firefox, Edge) and on any webpage, subject to inherent cross-origin policies.
+
+5. Technical Architecture
+5.1 Frontend
+
+    Technologies:
+    HTML, CSS, JavaScript (ES6+).
+    Bookmarklet:
+    A single JavaScript bookmarklet that injects the SlimScreen widget into any page.
+    Widget:
+    A dynamic, draggable overlay that appears on user action, maintains conversation state, and supports hotkeys.
+
+5.2 Backend
+
+    Serverless Function:
+    Hosted on Vercel using Node.js; implemented in api/infer.js.
+    API Integration:
+    Uses node-fetch and abort-controller to forward requests (with a constant librarian prompt) to the Hugging Face Inference API (model: EleutherAI/gpt-neo-125M).
+    CORS and Timeout:
+    Implements proper CORS headers with preflight (OPTIONS) handling and an extended timeout (up to 30 seconds) to accommodate slower responses.
+
+5.3 Dependencies
+
+    Frontend:
+    Minimal use of external libraries; vanilla JS for functionality.
+    Backend:
+        node-fetch (v2)
+        abort-controller
+    Hosting:
+    Vercel for serverless functions and overall deployment.
+
+6. User Flow
+
+    Setup:
+        User visits the welcome page (e.g., https://n02448428.github.io/SlimScreen).
+        Clear instructions and a bookmarklet are provided.
+        User drags the bookmarklet to the bookmarks bar.
+    Activation:
+        User clicks the bookmarklet on any webpage.
+        The script checks for the widget; if absent, it injects it dynamically.
+        The widget toggles on, and the bookmarklet text updates to “SlimScreen: On.”
+    Usage:
+        Text Highlighting:
+        User highlights text and presses Ctrl+Shift+X; the highlighted text is sent (with a constant librarian prompt) to the backend.
+        Conversational Follow-Up:
+        User enters follow-up queries in the widget’s input field.
+        Response Display:
+        AI responses are appended to the conversation log in the widget.
+    Actions:
+        Copy:
+        User clicks “Copy Conversation” to copy the dialogue to the clipboard.
+        Save:
+        User clicks “Save Conversation” to download the conversation as a text file.
+    Toggle Off:
+        User clicks the bookmarklet again or uses the widget’s close button to hide the widget; bookmarklet text updates accordingly.
+
+7. Success Metrics
+
+    MVP Launch:
+        At least 10 users provide positive feedback on the text highlighting and AI response quality.
+        Core features (toggle, hotkey, conversation logging, copy/save) work reliably on 90% of test cases.
+    Long-Term:
+        100+ downloads or active users by mid-2025.
+        Minimal CORS, timeout, or token-related errors.
+        Consistently warm and accurate librarian responses according to user feedback.
+
+8. Risks and Mitigations
+
+    API Performance & CORS Issues:
+        Risk: The Hugging Face API may return 503 errors or time out.
+        Mitigation: Implement extended timeouts (30 seconds) and robust error handling in the serverless function.
+    User Experience with Bookmarklet:
+        Risk: Inconsistent behavior when injecting on different webpages.
+        Mitigation: Dynamic injection logic to add the widget if not present; thorough testing on various sites.
+    Clipboard and File Save Security Restrictions:
+        Risk: Browser restrictions may block clipboard writes or file downloads.
+        Mitigation: Ensure these actions are directly tied to user gestures and handle errors gracefully.
+
+9. Roadmap
+9.1 MVP (March 2025)
+
+    Implement text highlighting, hotkey-triggered AI insights, and conversation logging.
+    Develop a toggleable widget injected via a bookmarklet.
+    Deploy the serverless backend on Vercel with proper CORS, error handling, and extended timeouts.
+
+9.2 Post-MVP (April–May 2025)
+
+    Integrate image capture and analysis features (OCR, descriptive AI).
+    Refine selection alignment and widget customization.
+    Collect and analyze user feedback to fine-tune the librarian tone and response quality.
+
+9.3 Future Enhancements (Q3 2025)
+
+    Support multiple AI models for different types of insights.
+    Develop a dedicated browser extension for deeper integration.
+    Add customization options for the widget’s appearance and functionality.
+
+10. Conclusion
+
+SlimScreen AI aims to deliver an intuitive, on-demand learning assistant directly in the browser. By combining a dynamic, toggleable widget injected via a bookmarklet with a robust, Vercel-hosted backend that manages API tokens securely, SlimScreen AI provides immediate, warm, and concise insights in a librarian-like tone. This PRD outlines the core functionality and future directions needed to create a seamless, lightweight tool that enhances the way users interact with web content.
