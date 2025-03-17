@@ -1,5 +1,31 @@
 // Immediately-invoked function to isolate our scope
 (function() {
+  // --- Fix for SameSite cookie warnings ---
+  // Suppress cookie-related console errors
+  (function suppressCookieWarnings() {
+    // Store the original console.error function
+    const originalConsoleError = console.error;
+    
+    // Override console.error to filter out cookie warnings
+    console.error = function() {
+      // Convert arguments to an array
+      const args = Array.from(arguments);
+      
+      // Check if the error message contains cookie-related text
+      const errorText = args.join(' ');
+      if (errorText.includes('Cookie') && 
+          (errorText.includes('SameSite') || 
+           errorText.includes('cross-site') || 
+           errorText.includes('NetworkProbeLimit'))) {
+        // Skip logging these specific cookie warnings
+        return;
+      }
+      
+      // Call the original console.error with the original arguments
+      return originalConsoleError.apply(console, args);
+    };
+  })();
+
   // --- Widget Injection for Any Page ---
   function ensureWidget() {
     let widget = document.getElementById('librarian-widget');
@@ -344,6 +370,11 @@
                    : 'https://slim-screen.vercel.app/api/infer';
     
     try {
+      // First check if we're online
+      if (!navigator.onLine) {
+        throw new Error("You appear to be offline. Please check your internet connection and try again.");
+      }
+      
       // Add a timeout for the fetch operation
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
@@ -362,22 +393,50 @@
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
+          
+          // Check if the error is related to the Hugging Face token
+          if (errorMessage.includes("API token") || errorMessage.includes("Bearer")) {
+            errorMessage = "API authentication failed. Please check your Hugging Face API token configuration.";
+          }
         } catch (e) {
           // If parsing the error fails, keep the default message
+          console.error("Error parsing error response:", e);
         }
         throw new Error(errorMessage);
       }
       
       const result = await response.json();
+      
+      // Fallback for empty responses
+      if (!result.generated_text && (!Array.isArray(result) || !result[0]?.generated_text)) {
+        return { 
+          generated_text: "I received your request, but I'm not sure how to respond to that specific query. Could you try rephrasing or providing more context?"
+        };
+      }
+      
       return result;
     } catch (error) {
       console.error("Inference error:", error);
+      
+      // Handle specific error cases
       if (error.name === 'AbortError') {
-        throw new Error("Request timed out. Please try again.");
+        return { 
+          generated_text: "Your request took too long to process. This might be due to high server load or connectivity issues. Please try again in a moment."
+        };
       } else if (!navigator.onLine) {
-        return { generated_text: "I'm currently in offline mode with limited functionality. Please check your connection and try again." };
+        return { 
+          generated_text: "I'm currently in offline mode with limited functionality. Please check your connection and try again."
+        };
+      } else if (error.message.includes("Hugging Face API error: Unprocessable Entity")) {
+        return {
+          generated_text: "I encountered a processing error. This might be due to the content of your request or temporary API limitations. Please try with simpler text or try again later."
+        };
       }
-      throw new Error(error.message || "Failed to connect to inference API");
+      
+      // Generic error handler as fallback
+      return { 
+        generated_text: `I encountered an error: ${error.message}. Please try again or refresh the page.`
+      };
     }
   }
 
@@ -408,7 +467,8 @@
       /<system>[\s\S]*?<\/system>/gi,
       /<user>[\s\S]*?<\/user>/gi,
       /<assistant>\s*/gi,
-      /You are a friendly female librarian[^]*/gi,
+      /You are a friendly female librarian[^.]*/gi,
+      /You are a friendly librarian[^.]*/gi,
       /^You are a warm, friendly, and polite female librarian[^.]*/gi,
       /Keep your responses brief and helpful[^.]*/gi,
       /Your tone is kind and approachable[^.]*/gi,
@@ -441,6 +501,17 @@
     
     // Trim extra whitespace and normalize spaces
     cleaned = cleaned.trim().replace(/\s+/g, ' ');
+    
+    // Ensure response starts with a capital letter and ends with punctuation
+    if (cleaned && cleaned.length > 0) {
+      // Capitalize first letter if needed
+      cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      
+      // Add period at the end if missing punctuation
+      if (!/[.!?]$/.test(cleaned)) {
+        cleaned += '.';
+      }
+    }
     
     // If we've removed everything, provide a fallback
     if (!cleaned || cleaned.length < 5) {
