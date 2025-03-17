@@ -54,10 +54,19 @@
     document.addEventListener('mouseup', () => {
       isDragging = false;
     });
+    
+    // Fix for the X button - should close and reset conversation
     widget.querySelector('#widget-close').addEventListener('click', () => {
       widget.style.display = 'none';
       updateBookmarkletText("Off");
+      // Clear conversation history and the conversation display
+      conversationHistory = [];
+      const convDiv = document.getElementById('conversation');
+      if (convDiv) {
+        convDiv.innerHTML = '';
+      }
     });
+    
     setupCopySave(widget);
     setupInputHandler(widget);
   }
@@ -68,21 +77,44 @@
     const copyBtn = widget.querySelector('#copy-conversation');
     const saveBtn = widget.querySelector('#save-conversation');
     
+    // Fix for copy button
     copyBtn.addEventListener('click', () => {
       if (conversationHistory.length === 0) {
         alert('No conversation to copy.');
         return;
       }
+      
       const allText = conversationHistory.map(m => `${m.sender}: ${m.text}`).join('\n');
       
-      // Fix for clipboard API
+      // Modern clipboard API with fallback
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(allText)
+          .then(() => alert('Conversation copied to clipboard!'))
+          .catch(err => {
+            console.error('Failed to copy: ', err);
+            fallbackCopyTextToClipboard(allText);
+          });
+      } else {
+        fallbackCopyTextToClipboard(allText);
+      }
+    });
+    
+    // Fallback copy method for older browsers
+    function fallbackCopyTextToClipboard(text) {
       const textArea = document.createElement('textarea');
-      textArea.value = allText;
+      textArea.value = text;
+      
+      // Make the textarea out of viewport
       textArea.style.position = 'fixed';
       textArea.style.left = '-999999px';
       textArea.style.top = '-999999px';
       document.body.appendChild(textArea);
-      textArea.focus();
+      
+      // Save current focus and selection
+      const focused = document.activeElement;
+      const selection = document.getSelection().rangeCount > 0 ? 
+                        document.getSelection().getRangeAt(0) : false;
+      
       textArea.select();
       
       try {
@@ -93,17 +125,30 @@
           alert('Failed to copy conversation. Your browser may not support this feature.');
         }
       } catch (err) {
+        console.error('Failed to copy: ', err);
         alert('Error copying to clipboard: ' + err);
       }
       
+      // Clean up
       document.body.removeChild(textArea);
-    });
+      
+      // Restore original focus and selection
+      if (selection) {
+        document.getSelection().removeAllRanges();
+        document.getSelection().addRange(selection);
+      }
+      if (focused) {
+        focused.focus();
+      }
+    }
     
+    // Fix for save button
     saveBtn.addEventListener('click', () => {
       if (conversationHistory.length === 0) {
         alert('No conversation to save.');
         return;
       }
+      
       const allText = conversationHistory.map(m => `${m.sender}: ${m.text}`).join('\n');
       const blob = new Blob([allText], { type: 'text/plain' });
       
@@ -112,7 +157,6 @@
       const url = URL.createObjectURL(blob);
       a.href = url;
       a.download = 'conversation-' + new Date().toISOString().slice(0,10) + '.txt';
-      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
       
