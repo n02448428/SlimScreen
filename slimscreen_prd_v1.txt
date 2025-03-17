@@ -1,100 +1,129 @@
-
----
-
-### PRODUCT_REQUIREMENTS_DOCUMENT.md
-
-```markdown
 # Product Requirements Document (PRD)
+## SlimScreen AI - Friendly Librarian
 
-## 1. Overview
+### 1. Overview & Vision
+SlimScreen AI is a lightweight, in-browser research assistant designed to eliminate the hassle of copy-pasting between apps. Acting like a friendly, knowledgeable librarian in a dimly lit, cozy library, it provides real-time definitions and context for any highlighted text. The initial focus is on text, with a smooth conversation flow—where users can ask follow-up questions in a concise, punctual manner. Future plans include potential enhancements such as image and video interpretation and even a YouTube-style picture-in-picture (PiP) feature.
 
-**Project Name:** SlimScreen AI - Friendly Librarian  
-**Purpose:** To create a lightweight, bookmarklet-powered tool that provides clear definitions and contextual insights for any highlighted text across the web.  
-**Vision:** Empower users with instant knowledge and foster an environment of curiosity and discovery in a user-friendly, interactive manner.
+### 2. Objectives
+- **Primary Objective:**  
+  Enable users to instantly understand any word, phrase, or text snippet they highlight on any webpage or document (including PDFs), without having to leave their current view.
+- **Secondary Objectives:**  
+  - Provide a minimal, privacy-first tool that clears user data immediately upon deactivation.
+  - Offer seamless integration across devices (desktop, mobile, tablet) with device-specific interaction methods.
+  - Maintain an engaging, consistent tone with a smart, friendly female librarian persona.
 
-## 2. Objectives
+### 3. MVP Scope
+- **Core Features:**
+  - **Text Definitions & Context:**  
+    The tool scans the current page, identifies highlighted text, and provides a clear, concise definition with contextual insights.
+  - **Smooth Conversational Interface:**  
+    A chat overlay where the user can ask follow-up questions in a fluid, natural conversation.
+  - **On/Off Toggle & Data Privacy:**  
+    A bookmarklet acts as the on/off switch that also clears conversation history instantly. No user data is stored.
+  - **Save & Copy Functionality:**  
+    One-click buttons to save the conversation as a text file or copy it to the clipboard.
+- **Delivery Mechanism:**  
+  - **Primary:** A bookmarklet for desktop (with a copy-to-clipboard option for mobile) that injects the overlay into any webpage.
+  - **Alternate Mechanisms (Future Considerations):**  
+    - A dedicated browser extension.
+    - A minimal Progressive Web App (PWA) with a floating widget.
+    - Native overlay features (e.g., picture-in-picture style on iOS).
 
-- **Enhance Learning:** Offer quick, reliable definitions and contextual background to improve comprehension.
-- **Ease of Use:** Maintain a simple, intuitive design that requires minimal user intervention.
-- **Interactivity:** Provide a dynamic interface for follow-up queries and conversation-style interactions.
-- **Accessibility:** Ensure compatibility with various websites and devices, making knowledge accessible anywhere.
+### 4. User Experience & Interface
+- **Desktop Experience:**
+  - **Activation:**  
+    Users add the bookmarklet by dragging it from the homepage. They highlight text on any page and press a keyboard shortcut (e.g., Ctrl+Shift+X) to open the chat overlay.
+  - **Interaction:**  
+    The overlay appears as a semi-transparent, unobtrusive floating window with a sleek, minimal design. It includes an X button at the top-right to close (and clear) the conversation, along with visible buttons for saving and copying the conversation.
+- **Mobile/Tablet Experience:**
+  - **Activation:**  
+    Users tap a “Copy Bookmarklet” button on the homepage, then follow device-specific instructions (e.g., for iOS, add a bookmark and edit its URL; for Android, create a new bookmark and replace the URL with the provided code).
+  - **Interaction:**  
+    A small, round floating widget appears which users can tap to toggle the overlay. The design remains minimal and nearly invisible, inspired by Apple's semi-transparent overlays, ensuring it doesn't interfere with reading.
+- **Future UI Enhancements:**  
+  - A voice-interaction feature.
+  - Persistent overlay via PiP mode for native apps (subject to iOS restrictions).
 
-## 3. Target Audience
+### 5. Technical Specifications & Stack
+- **Core Technologies:**  
+  - HTML, CSS, and JavaScript for the front-end.
+  - JSON files for configuration and content data.
+  - A Node.js library for server-side functions (if applicable) with minimal dependencies.
+- **Performance & Privacy Requirements:**  
+  - Fast load times and minimal footprint to support quick injections into webpages.
+  - No data storage: conversations are held temporarily in the client session and cleared when toggled off.
+  - Minimal use of cookies or any persistent data to ensure user privacy.
+- **Potential Optimizations:**  
+  - Streamlined code to reduce load times.
+  - Efficient caching strategies for static assets.
 
-- **Students & Academics:** Need quick definitions and contextual understanding while researching.
-- **Professionals & Researchers:** Desire rapid insights to support decision-making and learning.
-- **Casual Learners:** Anyone curious who wants to learn more without leaving their current page.
+### 6. Milestones & Timeline
+- **MVP Development (Immediate):**
+  - Finalize core functionality: text definition extraction and chat overlay interface.
+  - Implement bookmarklet injection and copy-to-clipboard feature with device-specific instructions.
+  - Ensure privacy features: auto-clear conversation and no data retention.
+- **Beta Testing & Feedback:**  
+  - Launch MVP internally/with select users (target release: tomorrow).
+  - Monitor load times, server capacity, and user engagement.
+- **Post-MVP Enhancements (Future):**
+  - Explore image and video interpretation features.
+  - Investigate alternative delivery mechanisms (e.g., browser extension, PWA, native overlay with PiP).
+  - Add voice interaction capabilities.
+  - Develop a robust marketing strategy and user acquisition plan.
 
-## 4. Key Features
-
-### 4.1. Quick Definitions
-- **Description:** Instantly provide clear explanations for technical terms and jargon.
-- **Requirements:**  
-  - Efficient parsing of highlighted text.
-  - Integration with a reliable definitions API or in-built database.
-
-### 4.2. Drag & Resize Widget
-- **Description:** Allow users to reposition and resize the widget for a customized browsing experience.
-- **Requirements:**  
-  - Intuitive drag-and-drop functionality.
-  - Smooth resizing with responsive design principles.
-
-### 4.3. Save Conversations
-- **Description:** Enable users to export and archive their interactions for future reference.
-- **Requirements:**  
-  - Local storage support.
-  - Export options in common formats (e.g., TXT, PDF).
-
-### 4.4. Cross-Platform Compatibility
-- **Description:** Ensure seamless operation across diverse websites and browsers.
-- **Requirements:**  
-  - Minimal dependencies to maximize compatibility.
-  - Testing across major browsers and devices.
-
-### 4.5. Interactive Follow-Up
-- **Description:** Provide an interface for users to ask additional questions, fostering a continuous learning dialogue.
-- **Requirements:**  
-  - Chat-like interface for follow-up questions.
-  - Real-time responses with context retention.
-
-## 5. Technical Requirements
-
-- **Frontend:**  
-  - HTML, CSS, and JavaScript.
-  - Responsive design using modern CSS frameworks.
-
-- **Backend (Optional):**  
-  - Serverless functions for processing if using an external API.
-  - Integration with third-party services for enhanced definitions and insights.
-
-- **Deployment:**  
-  - Hosted on platforms like Vercel or Netlify for global accessibility.
-  - Minimal configuration for easy updates and scalability.
-
-## 6. Milestones & Timeline
-
-- **Week 1:** Finalize design and architecture; set up the development environment.
-- **Week 2:** Develop core functionalities (bookmarklet activation, widget display, and quick definitions).
-- **Week 3:** Implement interactivity (drag & resize, save conversations, and follow-up interface).
-- **Week 4:** Testing, debugging, and deployment; gather user feedback for improvements.
-
-## 7. Success Metrics
-
-- **User Engagement:**  
-  - Number of activations and interactions per user session.
+### 7. Success Metrics
 - **Performance:**  
-  - Response time for definition queries.
-- **User Satisfaction:**  
-  - Positive feedback and active contributions from the community.
-- **Adoption Rate:**  
-  - Growth in active users and community contributions on GitHub.
+  - Fast load times and smooth injection on any webpage.
+- **User Engagement:**  
+  - Number of times users activate the tool.
+  - Daily active users and peak engagement metrics.
+- **Traffic & Feedback:**  
+  - Traffic to the homepage.
+  - User feedback via social channels (e.g., engagement on X/Twitter).
+- **Scalability:**  
+  - Server load testing to ensure the backend can handle bursts of activity.
 
-## 8. Future Enhancements
+### 8. Risks & Mitigation Strategies
+- **Awareness & Adoption:**  
+  - Risk: Users might not know about or understand how to install the bookmarklet.
+  - Mitigation:  
+    - Clear, device-specific instructions and a “Copy Bookmarklet” button.
+    - Include a brief onboarding guide on the homepage.
+- **Technical Limitations on iOS:**  
+  - Risk: iOS restrictions might limit persistent overlay functionality.
+  - Mitigation:  
+    - Focus on robust in-browser functionality for Safari.
+    - Consider a native or PWA solution for future iterations.
+- **User Privacy Concerns:**  
+  - Risk: Users may worry about data security.
+  - Mitigation:  
+    - Clearly state that no data is stored and conversation history is cleared immediately.
+    - Use simple, transparent privacy messaging throughout the tool.
 
-- **Multilingual Support:** Expand definitions and context to multiple languages.
-- **Advanced AI Capabilities:** Implement deeper context analysis and personalized insights.
-- **Community Contributions:** Foster a platform for user-suggested features and improvements.
+### 9. Marketing Strategy
+- **Initial Launch:**  
+  - Leverage social media (especially on X/Twitter) and online communities (e.g., Reddit, Hacker News) to announce the release.
+  - Offer early access invites and gather feedback from power users (researchers, book lovers, digital readers).
+- **Content Marketing:**  
+  - Publish blog posts and short demo videos showcasing real-world use cases.
+  - Create a short narrative about the friendly librarian in a cozy, dimly lit library setting to engage potential users.
+- **Partnerships & Outreach:**  
+  - Reach out to digital reading platforms and academic communities for collaborations.
+- **User Retention & Engagement:**  
+  - Encourage user testimonials and feedback.
+  - Monitor engagement metrics and iterate quickly based on user needs.
+
+### 10. Future Enhancements (Roadmap)
+- **Advanced Content Interpretation:**  
+  - Extend capabilities to interpret images and videos.
+- **Persistent Overlay via Native Apps:**  
+  - Explore a PiP-style overlay that can persist across apps on iOS and Android.
+- **Voice Interaction:**  
+  - Introduce voice input/output for a hands-free research experience.
+- **Alternative Delivery Mechanisms:**  
+  - Develop a dedicated browser extension or PWA to complement the bookmarklet approach.
 
 ---
 
-**SlimScreen AI - Friendly Librarian** is not just a tool; it’s a gateway to instant enlightenment. As we build, iterate, and refine, we stay true to our commitment: clear, accessible knowledge with a side of poetic ingenuity.
+**SlimScreen AI** is set to revolutionize the way you interact with digital content by making research seamless, intuitive, and unobtrusive. With a focus on speed, privacy, and simplicity, our friendly librarian is ready to assist—wherever you are.
+
