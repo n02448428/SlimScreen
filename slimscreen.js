@@ -3,10 +3,63 @@
   // --- Global Variables ---
   let conversationHistory = [];
   let widgetVisible = false;
+  let currentPageContext = {};
   
   // --- Debug Helper ---
   function debug(message) {
     console.log(`[SlimScreen] ${message}`);
+  }
+  
+  // --- Page Context Analysis ---
+  function analyzePageContext() {
+    debug("Analyzing page context");
+    
+    try {
+      // Get basic page information
+      currentPageContext = {
+        title: document.title || "Unknown Page",
+        url: window.location.href,
+        domain: window.location.hostname,
+        path: window.location.pathname,
+        description: getMetaDescription(),
+        headings: extractMainHeadings(),
+        lastUpdated: new Date().toISOString()
+      };
+      
+      debug("Page context analyzed successfully");
+    } catch (error) {
+      debug(`Error analyzing page context: ${error.message}`);
+      currentPageContext = {
+        title: document.title || "Unknown Page",
+        url: window.location.href,
+        error: "Could not fully analyze page content"
+      };
+    }
+    
+    return currentPageContext;
+  }
+  
+  // Helper functions for context analysis
+  function getMetaDescription() {
+    const metaDesc = document.querySelector('meta[name="description"]');
+    return metaDesc ? metaDesc.getAttribute('content') : "No description available";
+  }
+  
+  function extractMainHeadings() {
+    const headings = [];
+    const h1Elements = document.querySelectorAll('h1');
+    const h2Elements = document.querySelectorAll('h2');
+    
+    // Limit to first 3 h1s and 5 h2s for brevity
+    for (let i = 0; i < Math.min(h1Elements.length, 3); i++) {
+      headings.push({type: 'h1', text: h1Elements[i].textContent.trim()});
+    }
+    
+    for (let i = 0; i < Math.min(h2Elements.length, 5); i++) {
+      headings.push({type: 'h2', text: h2Elements[i].textContent.trim()});
+    }
+    
+    return headings;
   }
   
   // --- Widget Creation ---
@@ -26,8 +79,8 @@
         }
         #librarian-widget {
           position: fixed !important;
-          top: 20% !important;
-          right: 20px !important;
+          top: 20px !important;
+          left: 20px !important;
           width: 320px !important;
           background: rgba(255, 255, 255, 0.95) !important;
           backdrop-filter: blur(5px) !important;
@@ -40,7 +93,7 @@
           font-size: 14px !important;
           opacity: 0 !important;
           pointer-events: none !important;
-          transform: translateY(10px) !important;
+          transform: translateY(-10px) !important;
           transition: opacity 0.3s ease, transform 0.3s ease !important;
         }
         #librarian-widget.visible {
@@ -121,6 +174,18 @@
         #widget-buttons button:hover {
           background: rgba(58, 128, 210, 0.9) !important;
         }
+        #widget-context-button {
+          background: transparent !important;
+          border: none !important;
+          color: rgba(74, 144, 226, 0.8) !important;
+          font-size: 12px !important;
+          text-decoration: underline !important;
+          cursor: pointer !important;
+          padding: 0 12px 8px !important;
+          text-align: center !important;
+          display: block !important;
+          width: 100% !important;
+        }
         .widget-resize-handle {
           position: absolute !important;
           bottom: 0 !important;
@@ -145,6 +210,7 @@
       </div>
       <div id="conversation"></div>
       <input id="user-input" type="text" placeholder="Ask me anything..." />
+      <button id="widget-context-button">Tell me about this page</button>
       <div id="widget-buttons">
         <button id="copy-conversation">Copy</button>
         <button id="save-conversation">Save</button>
@@ -234,6 +300,13 @@
       hideWidget();
     });
     
+    // --- Context Button ---
+    widget.querySelector('#widget-context-button').addEventListener('click', function() {
+      analyzePageContext();
+      appendMessage('User', 'Tell me about this page');
+      processContextRequest();
+    });
+    
     // --- Input Handler ---
     setupInputHandler(widget);
     
@@ -254,9 +327,12 @@
       widget.dataset.initialized = 'true';
     }
     
+    // Analyze page context when widget is shown
+    analyzePageContext();
+    
     // Display greeting if conversation is empty
     if (conversationHistory.length === 0) {
-      appendMessage('Librarian', 'Hello! I\'m your friendly librarian. Highlight text for definitions or ask me a question directly.');
+      appendMessage('Librarian', `Hi there! I'm your friendly librarian. I can help you understand content on this page or answer any questions you have. Just highlight text with Ctrl+Shift+X or type your question below.`);
     }
     
     // Make widget visible with animation
@@ -292,6 +368,27 @@
     }
   }
   
+  // --- Process Page Context Request ---
+  function processContextRequest() {
+    const contextSummary = `I can see you're on ${currentPageContext.title}. This is ${currentPageContext.domain}${currentPageContext.path}. 
+    
+The page is about ${currentPageContext.description || "a topic I can't quite determine from the metadata"}. 
+
+${currentPageContext.headings && currentPageContext.headings.length > 0 ? 
+  `The main topics appear to be: ${currentPageContext.headings.map(h => h.text).join(", ")}` : 
+  "I don't see any clear headings to determine the main topics."}
+
+Is there something specific about this page you'd like to know?`;
+
+    const loadingId = showLoading();
+    
+    // Simulate thinking time for more natural conversation
+    setTimeout(() => {
+      removeLoading(loadingId);
+      appendMessage('Librarian', contextSummary);
+    }, 1000);
+  }
+  
   // --- Input Handler ---
   function setupInputHandler(widget) {
     const userInput = widget.querySelector('#user-input');
@@ -316,10 +413,18 @@
           const localResponse = handleLocalResponse(query);
           
           if (localResponse) {
-            // Use local response
+            // Use local response with slight delay for natural feel
             debug("Using local response");
+            setTimeout(() => {
+              removeLoading(loadingId);
+              appendMessage('Librarian', localResponse);
+            }, Math.random() * 800 + 400); // Random delay between 400-1200ms
+          } else if (query.toLowerCase().includes('this page') || 
+                    query.toLowerCase().includes('this website') || 
+                    query.toLowerCase().includes('this site')) {
+            // Handle page context questions
             removeLoading(loadingId);
-            appendMessage('Librarian', localResponse);
+            processContextRequest();
           } else {
             // Call API
             debug("Sending query to API");
@@ -327,19 +432,19 @@
             removeLoading(loadingId);
             
             if (result.error) {
-              appendMessage('Librarian', `Sorry, I encountered an error: ${result.error}`);
+              appendMessage('Librarian', `I'm sorry, I ran into a problem: ${result.error}. Would you like to try asking in a different way?`);
             } else if (Array.isArray(result) && result[0]?.generated_text) {
-              appendMessage('Librarian', cleanResponse(result[0].generated_text));
+              appendMessage('Librarian', enhanceResponse(result[0].generated_text));
             } else if (result.generated_text) {
-              appendMessage('Librarian', cleanResponse(result.generated_text));
+              appendMessage('Librarian', enhanceResponse(result.generated_text));
             } else {
-              appendMessage('Librarian', "I received your request but couldn't generate a proper response. Please try again.");
+              appendMessage('Librarian', "I understand what you're asking, but I'm having trouble formulating a good response. Could you rephrase your question?");
             }
           }
         } catch (error) {
           debug(`Error processing query: ${error.message}`);
           removeLoading(loadingId);
-          appendMessage('Librarian', `Sorry, I encountered an error: ${error.message || "Unknown error"}`);
+          appendMessage('Librarian', `I encountered a technical issue while processing your question: ${error.message || "Unknown error"}. Let's try again, shall we?`);
         } finally {
           userInput.disabled = false;
           userInput.focus();
@@ -386,7 +491,7 @@
     debug(`Appended message from ${sender}`);
   }
   
-  // --- Local Response Handler ---
+  // --- Local Response Handler with more natural conversation ---
   function handleLocalResponse(query) {
     const lowerQuery = query.toLowerCase().trim();
     
@@ -401,37 +506,116 @@
       test: /^(test|testing)$/
     };
     
+    // More natural responses with slight variations
+    const greetingResponses = [
+      "Hello there! How can I help you today?",
+      "Hi! What can I help you with?",
+      "Hey! I'm here to help. What do you need?"
+    ];
+    
+    const howAreYouResponses = [
+      "I'm doing well, thanks for asking! How can I help you today?",
+      "I'm great! Ready to assist with whatever you need.",
+      "Doing well! What can I help you with?"
+    ];
+    
+    const thanksResponses = [
+      "You're welcome! Let me know if you need anything else.",
+      "Happy to help! Anything else you'd like to know?",
+      "My pleasure! I'm here if you need more assistance."
+    ];
+    
+    const goodbyeResponses = [
+      "Goodbye! Feel free to come back if you have more questions.",
+      "See you later! Just click the bookmarklet whenever you need me again.",
+      "Take care! I'll be here when you need me."
+    ];
+    
+    const whoAreYouResponses = [
+      "I'm your friendly librarian assistant. I can help with definitions, explanations, and answering questions about this page or anything else you're curious about.",
+      "I'm your personal librarian assistant! I'm here to help you understand content, find information, or answer any questions you might have.",
+      "Think of me as your personal research assistant. I can help explain concepts, provide definitions, or give you information about this website."
+    ];
+    
+    const helpResponses = [
+      "You can ask me for definitions, highlight text with Ctrl+Shift+X, or ask me any questions about this page or other topics. I'm here to assist you!",
+      "I can help in several ways: click 'Tell me about this page' for site info, highlight text and press Ctrl+Shift+X for definitions, or just ask me questions directly.",
+      "Need help? You can highlight text and press Ctrl+Shift+X for definitions, ask me about this website, or ask any other questions you have."
+    ];
+    
+    // Random response selector
+    function getRandomResponse(responses) {
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+    
     // Check patterns and return appropriate response
     if (patterns.greeting.test(lowerQuery)) {
-      return "Hello! How can I help you today?";
+      return getRandomResponse(greetingResponses);
     }
     
     if (patterns.howAreYou.test(lowerQuery)) {
-      return "I'm doing well, thank you for asking! How can I assist you?";
+      return getRandomResponse(howAreYouResponses);
     }
     
     if (patterns.thanks.test(lowerQuery)) {
-      return "You're welcome! Let me know if you need anything else.";
+      return getRandomResponse(thanksResponses);
     }
     
     if (patterns.goodbye.test(lowerQuery)) {
-      return "Goodbye! Feel free to come back if you have more questions.";
+      return getRandomResponse(goodbyeResponses);
     }
     
     if (patterns.whoAreYou.test(lowerQuery)) {
-      return "I'm your friendly librarian assistant. I can help with definitions, explanations, and answering questions.";
+      return getRandomResponse(whoAreYouResponses);
     }
     
     if (patterns.help.test(lowerQuery)) {
-      return "You can ask me for definitions, highlight text with Ctrl+Shift+X, or ask me any questions. I'm here to assist you!";
+      return getRandomResponse(helpResponses);
     }
     
     if (patterns.test.test(lowerQuery)) {
-      return "I'm working properly! How can I help you?";
+      return "I'm working properly! I can help you with information about this page or answer any other questions you might have.";
     }
     
     // No matching pattern found
     return null;
+  }
+  
+  // --- Enhance Response for natural conversation ---
+  function enhanceResponse(text) {
+    if (!text) return "I received your message, but I'm having trouble formulating a response. Could you try asking in a different way?";
+    
+    // Clean up response first
+    let cleaned = cleanResponse(text);
+    
+    // Add occasional conversational elements if response is too formal/robotic
+    const randomValue = Math.random();
+    
+    // Add conversational openers (30% chance)
+    if (randomValue < 0.3 && !cleaned.startsWith("I ") && !cleaned.startsWith("That's ") && !cleaned.startsWith("Great ")) {
+      const openers = [
+        "I think ",
+        "From what I understand, ",
+        "Well, ",
+        "Hmm, ",
+        "Let's see... "
+      ];
+      cleaned = openers[Math.floor(Math.random() * openers.length)] + cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
+    }
+    
+    // Add conversational follow-ups (20% chance)
+    if (randomValue >= 0.3 && randomValue < 0.5 && !cleaned.includes("?") && !cleaned.includes("let me know")) {
+      const followUps = [
+        " Does that help?",
+        " Does that make sense?",
+        " Is that what you were looking for?",
+        " Let me know if you need more details.",
+        " I hope that answers your question."
+      ];
+      cleaned += followUps[Math.floor(Math.random() * followUps.length)];
+    }
+    
+    return cleaned;
   }
   
   // --- Copy/Save Functionality ---
@@ -526,6 +710,12 @@
         throw new Error("You appear to be offline. Please check your internet connection.");
       }
       
+      // Enhance the prompt with page context
+      let enhancedPrompt = text;
+      if (currentPageContext && currentPageContext.title) {
+        enhancedPrompt = `[Context: User is on ${currentPageContext.domain}, page titled "${currentPageContext.title}"] ${text}`;
+      }
+      
       // Set up request with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 20000);
@@ -533,7 +723,7 @@
       const response = await fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inputs: text }),
+        body: JSON.stringify({ inputs: enhancedPrompt }),
         signal: controller.signal
       });
       
@@ -560,26 +750,26 @@
       // Handle specific errors
       if (error.name === 'AbortError') {
         return { 
-          generated_text: "Your request took too long. This might be due to server load or network issues. Please try again shortly."
+          generated_text: "I'm sorry for the delay. The server is taking longer than expected to respond. Would you like to try asking something else?"
         };
       }
       
       if (!navigator.onLine) {
         return { 
-          generated_text: "You appear to be offline. Please check your internet connection and try again."
+          generated_text: "It looks like you're offline right now. Once your connection is restored, I'll be able to help you."
         };
       }
       
       // Default error response
       return { 
-        generated_text: `I encountered a problem: ${error.message}. Please try again later.`
+        generated_text: `I encountered a problem: ${error.message}. Let's try a different approach.`
       };
     }
   }
   
   // --- Clean Response ---
   function cleanResponse(text) {
-    if (!text) return "I received your message, but couldn't generate a clear response.";
+    if (!text) return "I received your message, but I'm not sure how to respond to that.";
     
     // Remove system prompts, tags, and instructions
     const patterns = [
@@ -588,7 +778,8 @@
       /<assistant>\s*/gi,
       /You are a (friendly|helpful) librarian[^.]*/gi,
       /Keep your responses brief and helpful[^.]*/gi,
-      /Your tone is kind and approachable[^.]*/gi
+      /Your tone is kind and approachable[^.]*/gi,
+      /\[Context: User is on[^\]]*\]/gi
     ];
     
     let cleaned = text;
@@ -607,7 +798,8 @@
       /FANT[A-Za-z]+::[^;]*;/g,
       /Result = [^;]*;/g,
       /DONT forget about receipts/g,
-      /Urban journals\./g
+      /Urban journals\./g,
+      /I'm here to help with that\. Could you provide more context\?/g
     ];
     
     strangePatterns.forEach(pattern => {
@@ -630,7 +822,7 @@
     
     // Fallback if we've removed too much
     if (!cleaned || cleaned.length < 5) {
-      cleaned = "I understand. Let me know if you need more information or have other questions.";
+      cleaned = "I understand what you're asking about. Can you tell me a bit more about what you'd like to know?";
     }
     
     return cleaned;
@@ -642,77 +834,277 @@
     
     document.addEventListener('keydown', async function(e) {
       // Check for Ctrl+Shift+X
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
-        debug("Hotkey triggered");
+      if (e.ctrlKey && e.shiftKey && e.key === 'X') {
+        debug("Hotkey detected: Ctrl+Shift+X");
+        e.preventDefault();
         
-        const selectedText = window.getSelection().toString().trim();
-        if (!selectedText) {
-          alert('No text selected! Please highlight some text first.');
-          return;
-        }
+        // Toggle widget visibility
+        toggleWidget();
         
-        // Show widget if not visible
-        if (!widgetVisible) {
-          showWidget();
-        }
-        
-        // Process the selected text
-        appendMessage('User', selectedText);
-        
-        // Disable input during processing
-        const userInput = document.getElementById('user-input');
-        if (userInput) userInput.disabled = true;
-        
-        // Show loading indicator
-        const loadingId = showLoading();
-        
-        try {
-          debug("Processing selected text");
-          const result = await runInference(selectedText);
-          
-          removeLoading(loadingId);
-          
-          if (result.error) {
-            appendMessage('Librarian', `Sorry, I encountered an error: ${result.error}`);
-          } else if (Array.isArray(result) && result[0]?.generated_text) {
-            appendMessage('Librarian', cleanResponse(result[0].generated_text));
-          } else if (result.generated_text) {
-            appendMessage('Librarian', cleanResponse(result.generated_text));
-          } else {
-            appendMessage('Librarian', "I received your selection but couldn't generate a proper response. Please try again.");
-          }
-        } catch (error) {
-          debug(`Error processing selection: ${error.message}`);
-          removeLoading(loadingId);
-          appendMessage('Librarian', `Sorry, I encountered an error: ${error.message || "Unknown error"}`);
-        } finally {
-          // Re-enable input
-          if (userInput) {
-            userInput.disabled = false;
-            userInput.focus();
+        // If widget is now visible and text is selected, use it
+        if (widgetVisible) {
+          const selectedText = window.getSelection().toString().trim();
+          if (selectedText) {
+            debug(`Selected text detected: ${selectedText.substring(0, 30)}...`);
+            appendMessage('User', `Help me understand: "${selectedText}"`);
+            
+            // Process the selected text
+            const loadingId = showLoading();
+            
+            try {
+              // Enhance prompt with page context
+              let enhancedPrompt = `Please explain this text concisely: "${selectedText}"`;
+              if (currentPageContext && currentPageContext.title) {
+                enhancedPrompt = `[Context: User is on ${currentPageContext.domain}, page titled "${currentPageContext.title}"] ${enhancedPrompt}`;
+              }
+              
+              const result = await runInference(enhancedPrompt);
+              
+              if (result.error) {
+                appendMessage('Librarian', `I'm sorry, I ran into a problem analyzing that text: ${result.error}. Could you try selecting a different section or asking a specific question about it?`);
+              } else if (Array.isArray(result) && result[0]?.generated_text) {
+                appendMessage('Librarian', enhanceResponse(result[0].generated_text));
+              } else if (result.generated_text) {
+                appendMessage('Librarian', enhanceResponse(result.generated_text));
+              } else {
+                appendMessage('Librarian', "I can see you've selected some text, but I'm having trouble understanding it. Could you ask a specific question about what you'd like to know?");
+              }
+            } catch (error) {
+              debug(`Error processing selected text: ${error.message}`);
+              appendMessage('Librarian', `I had trouble analyzing that selection: ${error.message || "Unknown error"}. Would you like to try a different approach?`);
+            } finally {
+              removeLoading(loadingId);
+              
+              // Focus input field
+              setTimeout(() => {
+                const input = document.getElementById('user-input');
+                if (input) input.focus();
+              }, 300);
+            }
           }
         }
       }
     });
+    
+    debug("Hotkey listener set up successfully");
   }
   
-  // --- Public Toggle Function ---
-  window.slimScreenToggle = function() {
-    debug("SlimScreen toggle called");
-    toggleWidget();
-  };
+  // --- Context Menu ---
+  function setupContextMenu() {
+    debug("Setting up context menu");
+    
+    // Listen for contextmenu event
+    document.addEventListener('contextmenu', function(e) {
+      // Get selected text if any
+      const selectedText = window.getSelection().toString().trim();
+      if (!selectedText) return; // Continue with normal context menu if no text selected
+      
+      // Add our custom menu item
+      const menuItem = document.createElement('div');
+      menuItem.textContent = 'Ask Librarian';
+      menuItem.style.cssText = `
+        position: absolute;
+        top: ${e.pageY}px;
+        left: ${e.pageX}px;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 5px 10px;
+        cursor: pointer;
+        z-index: 10000;
+        border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      `;
+      
+      document.body.appendChild(menuItem);
+      
+      // Handle click on our menu item
+      menuItem.addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.body.removeChild(menuItem);
+        
+        // Show widget and process text
+        showWidget();
+        appendMessage('User', `Help me understand: "${selectedText}"`);
+        
+        // Process the selected text
+        const loadingId = showLoading();
+        
+        runInference(`Please explain this text concisely: "${selectedText}"`)
+          .then(result => {
+            removeLoading(loadingId);
+            if (result.generated_text) {
+              appendMessage('Librarian', enhanceResponse(result.generated_text));
+            } else {
+              appendMessage('Librarian', "I can see you've selected some text, but I'm having trouble understanding it. Could you ask a specific question about what you'd like to know?");
+            }
+          })
+          .catch(error => {
+            removeLoading(loadingId);
+            debug(`Error processing selected text: ${error.message}`);
+            appendMessage('Librarian', `I had trouble analyzing that selection: ${error.message || "Unknown error"}. Would you like to try a different approach?`);
+          });
+      });
+      
+      // Remove menu item when clicking elsewhere
+      const removeMenu = function() {
+        if (document.body.contains(menuItem)) {
+          document.body.removeChild(menuItem);
+        }
+        document.removeEventListener('click', removeMenu);
+      };
+      
+      document.addEventListener('click', removeMenu);
+    });
+    
+    debug("Context menu set up successfully");
+  }
+  
+  // --- Handle URL Changes (for SPAs) ---
+  function setupUrlChangeMonitor() {
+    debug("Setting up URL change monitor for SPAs");
+    
+    // Store current URL to detect changes
+    let lastUrl = window.location.href;
+    
+    // Check periodically for URL changes
+    setInterval(() => {
+      const currentUrl = window.location.href;
+      if (currentUrl !== lastUrl) {
+        debug(`URL changed from ${lastUrl} to ${currentUrl}`);
+        lastUrl = currentUrl;
+        
+        // Update page context
+        analyzePageContext();
+        
+        // If widget is visible, notify about page change
+        if (widgetVisible) {
+          appendMessage('Librarian', `I notice you've navigated to a new page: ${document.title}. Let me know if you have any questions about this content.`);
+        }
+      }
+    }, 1000);
+    
+    debug("URL change monitor set up successfully");
+  }
   
   // --- Initialization ---
-  function init() {
+  function initialize() {
     debug("Initializing SlimScreen");
-    setupHotkey();
     
-    // Signal that SlimScreen is loaded
-    window.slimScreenLoaded = true;
+    // Setup main functionality
+    setupHotkey();
+    setupContextMenu();
+    setupUrlChangeMonitor();
+    
+    // Add fixed toggle button
+    addFixedToggleButton();
+    
+    // Show widget initially (optional, can be commented out)
+    // showWidget();
     
     debug("SlimScreen initialized successfully");
   }
   
-  // Run initialization
-  init();
+  // --- Fixed Toggle Button ---
+  function addFixedToggleButton() {
+    debug("Adding fixed toggle button");
+    
+    const button = document.createElement('div');
+    button.innerHTML = '📚';
+    button.title = 'Toggle Librarian (Ctrl+Shift+X)';
+    button.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background: rgba(74, 144, 226, 0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 2147483646;
+      transition: transform 0.3s ease;
+    `;
+    
+    // Hover effect
+    button.addEventListener('mouseover', () => {
+      button.style.transform = 'scale(1.1)';
+    });
+    
+    button.addEventListener('mouseout', () => {
+      button.style.transform = 'scale(1)';
+    });
+    
+    // Click handler
+    button.addEventListener('click', () => {
+      toggleWidget();
+    });
+    
+    document.body.appendChild(button);
+    
+    debug("Fixed toggle button added");
+  }
+  
+  // --- Enhanced Context Awareness ---
+  function enhancePageContext() {
+    debug("Enhancing page context analysis");
+    
+    // Add more context from the page content
+    try {
+      // Get more text content
+      const mainContent = document.querySelector('main') || document.querySelector('article') || document.body;
+      const paragraphs = mainContent.querySelectorAll('p');
+      
+      // Extract some paragraph text (limited to first 5 paragraphs)
+      let contentSample = [];
+      for (let i = 0; i < Math.min(paragraphs.length, 5); i++) {
+        const text = paragraphs[i].textContent.trim();
+        if (text.length > 20) { // Only include substantial paragraphs
+          contentSample.push(text);
+        }
+      }
+      
+      // Get images with alt text
+      const images = document.querySelectorAll('img[alt]');
+      const imageData = [];
+      
+      for (let i = 0; i < Math.min(images.length, 3); i++) {
+        const alt = images[i].alt.trim();
+        if (alt && alt.length > 3 && alt !== 'logo') {
+          imageData.push(alt);
+        }
+      }
+      
+      // Enhance the current context
+      currentPageContext.contentSample = contentSample;
+      currentPageContext.imageDescriptions = imageData;
+      
+      // Check if page has forms
+      currentPageContext.hasForms = document.querySelectorAll('form').length > 0;
+      
+      // Look for key sections
+      currentPageContext.hasCommentsSection = 
+        !!document.querySelector('.comments') || 
+        !!document.querySelector('#comments') ||
+        !!document.querySelector('[data-testid="comments"]');
+      
+      debug("Enhanced page context successfully");
+    } catch (error) {
+      debug(`Error enhancing page context: ${error.message}`);
+    }
+  }
+  
+  // Call initialization when DOM is fully loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+  } else {
+    initialize();
+  }
+  
+  // Make toggle function available globally for bookmarklet
+  window.toggleSlimScreen = toggleWidget;
+  
 })();
