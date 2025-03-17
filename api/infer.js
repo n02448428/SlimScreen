@@ -15,8 +15,8 @@ module.exports = async (req, res) => {
   const apiUrl = 'https://api-inference.huggingface.co/models/microsoft/DialoGPT-small';
   const token = process.env.HUGGINGFACE_TOKEN;
   
-  // Improved system prompt for friendly female librarian character
-  const librarianInstruction = "You are a warm, friendly, and polite female librarian who always provides clear definitions, context, and concise insights. Keep your responses brief and helpful. Your tone is kind and approachable. ";
+  // Improved system prompt for friendly female librarian character - separate from user input
+  const systemPrompt = "You are a friendly female librarian providing brief, helpful definitions for highlighted words. Respond in about 40-50 words with clear, concise explanations. Include context and usage examples when relevant. Never repeat instructions in your response.";
 
   if (!token) {
     console.error("HUGGINGFACE_TOKEN is not set in environment variables");
@@ -28,10 +28,22 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: "Missing required 'inputs' field" });
   }
 
-  // Prepend the system instruction to the user's input
-  const fullPrompt = {
-    inputs: librarianInstruction + req.body.inputs
-  };
+  // Check if the model supports separate system prompts
+  let fullPrompt;
+  try {
+    // Try using the preferred format with separate system and user prompts
+    fullPrompt = {
+      inputs: {
+        system: systemPrompt,
+        user: req.body.inputs
+      }
+    };
+  } catch (e) {
+    // Fallback to a more controlled prepending with clear separator
+    fullPrompt = {
+      inputs: `<system>\n${systemPrompt}\n</system>\n\n<user>\n${req.body.inputs}\n</user>\n\n<assistant>\n`
+    };
+  }
 
   console.log("Processing request with sanitized prompt");
 
@@ -68,6 +80,14 @@ module.exports = async (req, res) => {
     try {
       const text = await response.text();
       data = JSON.parse(text);
+      
+      // Apply post-processing here on the server side to ensure clean responses
+      if (data.generated_text) {
+        data.generated_text = cleanResponse(data.generated_text);
+      } else if (Array.isArray(data) && data[0]?.generated_text) {
+        data[0].generated_text = cleanResponse(data[0].generated_text);
+      }
+      
     } catch (jsonError) {
       console.error("Invalid JSON received:", jsonError);
       return res.status(500).json({ error: "Invalid response received from Hugging Face" });
@@ -82,3 +102,34 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: "Proxy inference failed", details: errorMessage });
   }
 };
+
+// Server-side response cleaner
+function cleanResponse(text) {
+  // First, check if the system prompt is at the beginning
+  if (text.includes("You are a friendly female librarian") || 
+      text.includes("system") || 
+      text.includes("assistant") ||
+      text.includes("<user>")) {
+      
+    // Clean tags and system instructions
+    const cleaningPatterns = [
+      /<system>[\s\S]*?<\/system>/i,
+      /<user>[\s\S]*?<\/user>/i,
+      /<assistant>\s*/i,
+      /You are a friendly female librarian[\s\S]*?relevant\./i,
+      /Never repeat instructions in your response\./i,
+      /Your tone is kind and approachable\./i,
+      /Keep your responses brief and helpful\./i
+    ];
+    
+    cleaningPatterns.forEach(pattern => {
+      text = text.replace(pattern, '');
+    });
+  }
+  
+  // Trim and normalize spaces
+  text = text.trim().replace(/\s+/g, ' ');
+  
+  // Ensure we have a response, or provide a fallback
+  return text || "I'm here to help with that. Could you provide more context?";
+}

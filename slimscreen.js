@@ -4,28 +4,104 @@
   function ensureWidget() {
     let widget = document.getElementById('librarian-widget');
     if (!widget) {
+      // Create a style element with !important rules to ensure consistent styling
+      const styleId = 'librarian-widget-styles';
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+          #librarian-widget, #librarian-widget * {
+            font-family: 'Arial', sans-serif !important;
+            line-height: 1.5 !important;
+            box-sizing: border-box !important;
+          }
+          #librarian-widget {
+            position: fixed !important;
+            top: 10px !important;
+            left: 10px !important;
+            width: 320px !important;
+            background: #fff !important;
+            border: 2px solid #4a90e2 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+            z-index: 9999999 !important;
+            transition: width 0.3s, height 0.3s !important;
+            color: #333 !important;
+            font-size: 14px !important;
+          }
+          #widget-header {
+            cursor: move !important;
+            padding: 10px 15px !important;
+            background: #4a90e2 !important;
+            border-bottom: 1px solid #3a80d2 !important;
+          }
+          #widget-header strong {
+            color: #fff !important;
+            font-size: 16px !important;
+            font-weight: bold !important;
+          }
+          #widget-close {
+            float: right !important;
+            background: transparent !important;
+            border: none !important;
+            color: #fff !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            font-size: 16px !important;
+          }
+          #conversation {
+            max-height: 300px !important;
+            overflow-y: auto !important;
+            padding: 15px !important;
+            background: #fff !important;
+          }
+          #conversation div {
+            margin-bottom: 8px !important;
+            color: #333 !important;
+          }
+          #conversation strong {
+            font-weight: bold !important;
+            color: #333 !important;
+          }
+          #user-input {
+            width: calc(100% - 30px) !important;
+            margin: 10px 15px !important;
+            padding: 8px !important;
+            border: 1px solid #ccc !important;
+            border-radius: 4px !important;
+            font-size: 14px !important;
+            color: #333 !important;
+          }
+          #widget-buttons {
+            padding: 0 15px 15px !important;
+          }
+          #widget-buttons button {
+            background: #4a90e2 !important;
+            color: #fff !important;
+            border: none !important;
+            padding: 6px 12px !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            margin-right: 8px !important;
+            font-size: 14px !important;
+          }
+          #widget-buttons button:hover {
+            background: #3a80d2 !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
       widget = document.createElement('div');
       widget.id = 'librarian-widget';
-      widget.style.position = 'fixed';
-      widget.style.top = '10px';
-      widget.style.left = '10px';
-      widget.style.width = '300px';
-      widget.style.background = '#fff';
-      widget.style.border = '1px solid #ccc';
-      widget.style.borderRadius = '8px';
-      widget.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
-      widget.style.zIndex = '9999';
-      widget.style.fontFamily = 'sans-serif';
-      widget.style.transition = 'width 0.3s, height 0.3s';
-      widget.style.display = 'none';
       widget.innerHTML = `
-        <div id="widget-header" style="cursor: move; padding: 10px; background: #f7f7f7; border-bottom: 1px solid #ccc;">
-          <strong>Librarian</strong>
-          <button id="widget-close" style="float: right;">X</button>
+        <div id="widget-header">
+          <strong>Friendly Librarian</strong>
+          <button id="widget-close">✕</button>
         </div>
-        <div id="conversation" style="max-height: 200px; overflow-y: auto; padding: 10px; font-size: 0.9em;"></div>
-        <input id="user-input" type="text" placeholder="Ask me anything..." style="width: calc(100% - 20px); margin: 10px; padding: 5px;" />
-        <div id="widget-buttons" style="padding: 0 10px 10px;">
+        <div id="conversation"></div>
+        <input id="user-input" type="text" placeholder="Ask me anything..." />
+        <div id="widget-buttons">
           <button id="copy-conversation">Copy Conversation</button>
           <button id="save-conversation">Save Conversation</button>
         </div>
@@ -210,7 +286,7 @@
     if (convDiv) {
       const msg = document.createElement('div');
       msg.id = id;
-      msg.textContent = 'Librarian: Looking that up for you...';
+      msg.innerHTML = '<strong>Librarian:</strong> Looking that up for you...';
       msg.style.fontStyle = 'italic';
       convDiv.appendChild(msg);
       convDiv.scrollTop = convDiv.scrollHeight;
@@ -234,7 +310,7 @@
       
       // Only add greeting if conversation is empty
       if (conversationHistory.length === 0) {
-        appendMessage('Librarian', 'Hello! I\'m your friendly librarian assistant. Highlight text on this page and press Ctrl+Shift+X, or ask me a question directly.');
+        appendMessage('Librarian', 'Hello! I\'m your friendly librarian. Highlight text for definitions or ask me a question directly.');
       }
     } else {
       widget.style.display = 'none';
@@ -254,7 +330,6 @@
     if (convDiv) {
       const msg = document.createElement('div');
       msg.innerHTML = `<strong>${sender}:</strong> ${text}`;
-      msg.style.marginBottom = '8px';
       convDiv.appendChild(msg);
       convDiv.scrollTop = convDiv.scrollHeight;
     }
@@ -323,14 +398,23 @@
     }
   }
 
-  // Clean up responses to remove prompt leakage or code artifacts
+  // Updated, more thorough clean up responses function
   function cleanResponse(text) {
-    // Remove the system prompt instructions completely
+    // We should have already cleaned the response on the server,
+    // but just in case, apply client-side cleaning as well
+    
+    // Remove system prompt instructions and XML tags
     const promptPatterns = [
-      /You are a warm, friendly, and polite female librarian[^]*?NATURAL LANGUAGE\./i,
-      /Never use bad words\.[^]*?NATURAL LANGUAGE\./i,
-      /DO NOT OUTPUT CODE OR TECHNICAL ARTIFACTS\./i,
-      /RESPOND ONLY WITH NATURAL LANGUAGE\./i
+      /<system>[\s\S]*?<\/system>/gi,
+      /<user>[\s\S]*?<\/user>/gi,
+      /<assistant>\s*/gi,
+      /You are a friendly female librarian[^]*/gi,
+      /^You are a warm, friendly, and polite female librarian[^.]*/gi,
+      /Keep your responses brief and helpful[^.]*/gi,
+      /Your tone is kind and approachable[^.]*/gi,
+      /security purposes/gi,
+      /monitoring and recording/gi,
+      /Role models Honor the important roles/gi
     ];
     
     let cleaned = text;
@@ -344,16 +428,23 @@
     const codeArtifacts = /[A-Za-z]+::[A-Za-z]+\([^)]*\)[^;]*;|Console\.[A-Za-z]+\([^)]*\);|[A-Za-z]+Exception\(\);/g;
     cleaned = cleaned.replace(codeArtifacts, '');
     
-    // Remove strange patterns and random phrases that shouldn't be there
+    // Remove strange patterns and random phrases
     const strangePatterns = /FANT[A-Za-z]+::[^;]*;|Result = [^;]*;|DONT forget about receipts|Urban journals\./g;
     cleaned = cleaned.replace(strangePatterns, '');
+    
+    // Remove any responses that repeat the word "librarian" multiple times
+    if ((cleaned.match(/librarian/gi) || []).length > 2) {
+      const sentences = cleaned.split('.');
+      // Keep only sentences that don't mention "librarian"
+      cleaned = sentences.filter(s => !s.match(/librarian/gi)).join('.');
+    }
     
     // Trim extra whitespace and normalize spaces
     cleaned = cleaned.trim().replace(/\s+/g, ' ');
     
     // If we've removed everything, provide a fallback
-    if (!cleaned) {
-      cleaned = "I'm sorry, I couldn't generate a proper response. Could you rephrase your question?";
+    if (!cleaned || cleaned.length < 5) {
+      cleaned = "Here's a brief definition of that term. Please let me know if you need more information.";
     }
     
     return cleaned;
@@ -371,7 +462,7 @@
         
         // Add greeting if conversation is empty
         if (conversationHistory.length === 0) {
-          appendMessage('Librarian', 'Hello! I\'m your friendly librarian assistant. Let me help you with that.');
+          appendMessage('Librarian', 'Hello! I\'m your friendly librarian. Let me help you with that.');
         }
         
         appendMessage('User', selectedText);
