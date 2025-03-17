@@ -1,457 +1,534 @@
 // Immediately-invoked function to isolate our scope
 (function() {
-  // --- Fix for SameSite cookie warnings ---
-  // Suppress cookie-related console errors
-  (function suppressCookieWarnings() {
-    // Store the original console.error function
-    const originalConsoleError = console.error;
+  // --- Global Variables ---
+  let conversationHistory = [];
+  let widgetVisible = false;
+  
+  // --- Debug Helper ---
+  function debug(message) {
+    console.log(`[SlimScreen] ${message}`);
+  }
+  
+  // --- Widget Creation ---
+  function createWidget() {
+    debug("Creating widget");
     
-    // Override console.error to filter out cookie warnings
-    console.error = function() {
-      // Convert arguments to an array
-      const args = Array.from(arguments);
-      
-      // Check if the error message contains cookie-related text
-      const errorText = args.join(' ');
-      if (errorText.includes('Cookie') && 
-          (errorText.includes('SameSite') || 
-           errorText.includes('cross-site') || 
-           errorText.includes('NetworkProbeLimit'))) {
-        // Skip logging these specific cookie warnings
-        return;
-      }
-      
-      // Call the original console.error with the original arguments
-      return originalConsoleError.apply(console, args);
-    };
-  })();
-
-  // --- Widget Injection for Any Page ---
-  function ensureWidget() {
-    let widget = document.getElementById('librarian-widget');
-    if (!widget) {
-      // Create a style element with !important rules to ensure consistent styling
-      const styleId = 'librarian-widget-styles';
-      if (!document.getElementById(styleId)) {
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.textContent = `
-          #librarian-widget, #librarian-widget * {
-            font-family: 'Arial', sans-serif !important;
-            line-height: 1.5 !important;
-            box-sizing: border-box !important;
-          }
-          #librarian-widget {
-            position: fixed !important;
-            top: 10px !important;
-            left: 10px !important;
-            width: 320px !important;
-            background: rgba(255, 255, 255, 0.85) !important;
-            backdrop-filter: blur(5px) !important;
-            border: 1px solid rgba(74, 144, 226, 0.7) !important;
-            border-radius: 8px !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
-            z-index: 9999999 !important;
-            transition: width 0.3s, height 0.3s !important;
-            color: #333 !important;
-            font-size: 14px !important;
-            display: none !important; /* Hide by default */
-          }
-          #widget-header {
-            cursor: move !important;
-            padding: 8px 12px !important;
-            background: rgba(74, 144, 226, 0.8) !important;
-            border-radius: 7px 7px 0 0 !important;
-          }
-          #widget-header strong {
-            color: #fff !important;
-            font-size: 14px !important;
-            font-weight: bold !important;
-          }
-          #widget-close {
-            float: right !important;
-            background: transparent !important;
-            border: none !important;
-            color: #fff !important;
-            font-weight: bold !important;
-            cursor: pointer !important;
-            font-size: 16px !important;
-          }
-          #conversation {
-            max-height: 250px !important;
-            overflow-y: auto !important;
-            padding: 12px !important;
-            background: transparent !important;
-          }
-          #conversation div {
-            margin-bottom: 8px !important;
-            color: #333 !important;
-          }
-          #conversation strong {
-            font-weight: bold !important;
-            color: #333 !important;
-          }
-          #user-input {
-            width: calc(100% - 24px) !important;
-            margin: 8px 12px !important;
-            padding: 6px !important;
-            border: 1px solid rgba(204, 204, 204, 0.6) !important;
-            border-radius: 4px !important;
-            font-size: 14px !important;
-            color: #333 !important;
-            background: rgba(255, 255, 255, 0.7) !important;
-          }
-          #widget-buttons {
-            padding: 0 12px 12px !important;
-            display: flex !important;
-            justify-content: space-between !important;
-          }
-          #widget-buttons button {
-            background: rgba(74, 144, 226, 0.8) !important;
-            color: #fff !important;
-            border: none !important;
-            padding: 4px 10px !important;
-            border-radius: 4px !important;
-            cursor: pointer !important;
-            font-size: 12px !important;
-            flex: 1 !important;
-            margin: 0 4px !important;
-          }
-          #widget-buttons button:first-child {
-            margin-left: 0 !important;
-          }
-          #widget-buttons button:last-child {
-            margin-right: 0 !important;
-          }
-          #widget-buttons button:hover {
-            background: rgba(58, 128, 210, 0.9) !important;
-          }
-        `;
-        document.head.appendChild(style);
-      }
-
-      widget = document.createElement('div');
-      widget.id = 'librarian-widget';
-      widget.innerHTML = `
-        <div id="widget-header">
-          <strong>Friendly Librarian</strong>
-          <button id="widget-close">✕</button>
-        </div>
-        <div id="conversation"></div>
-        <input id="user-input" type="text" placeholder="Ask me anything..." />
-        <div id="widget-buttons">
-          <button id="copy-conversation">Copy</button>
-          <button id="save-conversation">Save</button>
-        </div>
+    // First inject styles with !important to override page styles
+    const styleId = 'librarian-widget-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        #librarian-widget, #librarian-widget * {
+          font-family: 'Arial', sans-serif !important;
+          line-height: 1.5 !important;
+          box-sizing: border-box !important;
+        }
+        #librarian-widget {
+          position: fixed !important;
+          top: 20% !important;
+          right: 20px !important;
+          width: 320px !important;
+          background: rgba(255, 255, 255, 0.95) !important;
+          backdrop-filter: blur(5px) !important;
+          border: 1px solid rgba(74, 144, 226, 0.7) !important;
+          border-radius: 8px !important;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+          z-index: 2147483647 !important; /* Maximum z-index value */
+          transition: width 0.3s, height 0.3s !important;
+          color: #333 !important;
+          font-size: 14px !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          transform: translateY(10px) !important;
+          transition: opacity 0.3s ease, transform 0.3s ease !important;
+        }
+        #librarian-widget.visible {
+          opacity: 1 !important;
+          pointer-events: all !important;
+          transform: translateY(0) !important;
+        }
+        #widget-header {
+          cursor: move !important;
+          padding: 8px 12px !important;
+          background: rgba(74, 144, 226, 0.8) !important;
+          border-radius: 7px 7px 0 0 !important;
+          user-select: none !important;
+        }
+        #widget-header strong {
+          color: #fff !important;
+          font-size: 14px !important;
+          font-weight: bold !important;
+        }
+        #widget-close {
+          float: right !important;
+          background: transparent !important;
+          border: none !important;
+          color: #fff !important;
+          font-weight: bold !important;
+          cursor: pointer !important;
+          font-size: 16px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          line-height: 1 !important;
+        }
+        #conversation {
+          max-height: 250px !important;
+          overflow-y: auto !important;
+          padding: 12px !important;
+          background: transparent !important;
+        }
+        #conversation div {
+          margin-bottom: 8px !important;
+          color: #333 !important;
+        }
+        #conversation strong {
+          font-weight: bold !important;
+          color: #333 !important;
+        }
+        #user-input {
+          width: calc(100% - 24px) !important;
+          margin: 8px 12px !important;
+          padding: 8px !important;
+          border: 1px solid rgba(204, 204, 204, 0.6) !important;
+          border-radius: 4px !important;
+          font-size: 14px !important;
+          color: #333 !important;
+          background: rgba(255, 255, 255, 0.9) !important;
+        }
+        #widget-buttons {
+          padding: 0 12px 12px !important;
+          display: flex !important;
+          justify-content: space-between !important;
+        }
+        #widget-buttons button {
+          background: rgba(74, 144, 226, 0.8) !important;
+          color: #fff !important;
+          border: none !important;
+          padding: 6px 12px !important;
+          border-radius: 4px !important;
+          cursor: pointer !important;
+          font-size: 12px !important;
+          flex: 1 !important;
+          margin: 0 4px !important;
+        }
+        #widget-buttons button:first-child {
+          margin-left: 0 !important;
+        }
+        #widget-buttons button:last-child {
+          margin-right: 0 !important;
+        }
+        #widget-buttons button:hover {
+          background: rgba(58, 128, 210, 0.9) !important;
+        }
+        .widget-resize-handle {
+          position: absolute !important;
+          bottom: 0 !important;
+          right: 0 !important;
+          width: 16px !important;
+          height: 16px !important;
+          cursor: nwse-resize !important;
+          background: rgba(74, 144, 226, 0.5) !important;
+          border-radius: 0 0 8px 0 !important;
+        }
       `;
-      document.body.appendChild(widget);
-      setupWidget(widget);
+      document.head.appendChild(style);
     }
+    
+    // Create widget element
+    const widget = document.createElement('div');
+    widget.id = 'librarian-widget';
+    widget.innerHTML = `
+      <div id="widget-header">
+        <strong>Friendly Librarian</strong>
+        <button id="widget-close">✕</button>
+      </div>
+      <div id="conversation"></div>
+      <input id="user-input" type="text" placeholder="Ask me anything..." />
+      <div id="widget-buttons">
+        <button id="copy-conversation">Copy</button>
+        <button id="save-conversation">Save</button>
+      </div>
+      <div class="widget-resize-handle"></div>
+    `;
+    
+    // Append widget to body
+    document.body.appendChild(widget);
+    debug("Widget created and appended to body");
+    
     return widget;
   }
-
-  // --- Setup Widget Events (Draggable, Close, etc.) ---
+  
+  // --- Widget Setup ---
   function setupWidget(widget) {
+    debug("Setting up widget functionality");
+    
+    // --- Draggable Header ---
     const header = widget.querySelector('#widget-header');
     let isDragging = false, offsetX, offsetY;
-    header.addEventListener('mousedown', (e) => {
+    
+    header.addEventListener('mousedown', function(e) {
       isDragging = true;
-      offsetX = e.clientX - widget.offsetLeft;
-      offsetY = e.clientY - widget.offsetTop;
+      offsetX = e.clientX - widget.getBoundingClientRect().left;
+      offsetY = e.clientY - widget.getBoundingClientRect().top;
+      header.style.cursor = 'grabbing';
+      e.preventDefault(); // Prevent text selection during drag
     });
-    document.addEventListener('mousemove', (e) => {
+    
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      
+      const x = e.clientX - offsetX;
+      const y = e.clientY - offsetY;
+      
+      // Keep widget within viewport bounds
+      const maxX = window.innerWidth - widget.offsetWidth;
+      const maxY = window.innerHeight - widget.offsetHeight;
+      
+      widget.style.left = Math.max(0, Math.min(x, maxX)) + 'px';
+      widget.style.top = Math.max(0, Math.min(y, maxY)) + 'px';
+    });
+    
+    document.addEventListener('mouseup', function() {
       if (isDragging) {
-        widget.style.left = (e.clientX - offsetX) + 'px';
-        widget.style.top = (e.clientY - offsetY) + 'px';
-      }
-    });
-    document.addEventListener('mouseup', () => {
-      isDragging = false;
-    });
-    
-    // Fix for the X button - should close and reset conversation
-    widget.querySelector('#widget-close').addEventListener('click', () => {
-      widget.style.display = 'none';
-      updateBookmarkletText("Off");
-      // Clear conversation history and the conversation display
-      conversationHistory = [];
-      const convDiv = document.getElementById('conversation');
-      if (convDiv) {
-        convDiv.innerHTML = '';
+        isDragging = false;
+        header.style.cursor = 'move';
       }
     });
     
-    setupCopySave(widget);
+    // --- Resizable Widget ---
+    const resizeHandle = widget.querySelector('.widget-resize-handle');
+    let isResizing = false, startWidth, startHeight, startX, startY;
+    
+    resizeHandle.addEventListener('mousedown', function(e) {
+      isResizing = true;
+      startWidth = widget.offsetWidth;
+      startHeight = widget.offsetHeight;
+      startX = e.clientX;
+      startY = e.clientY;
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+      if (!isResizing) return;
+      
+      const width = startWidth + (e.clientX - startX);
+      const height = startHeight + (e.clientY - startY);
+      
+      if (width >= 250) widget.style.width = width + 'px';
+      if (height >= 200) {
+        widget.style.height = height + 'px';
+        const conversation = widget.querySelector('#conversation');
+        if (conversation) {
+          conversation.style.height = (height - 120) + 'px'; // Adjust content height
+        }
+      }
+    });
+    
+    document.addEventListener('mouseup', function() {
+      isResizing = false;
+    });
+    
+    // --- Close Button ---
+    widget.querySelector('#widget-close').addEventListener('click', function() {
+      hideWidget();
+    });
+    
+    // --- Input Handler ---
     setupInputHandler(widget);
-  }
-
-  // --- Setup Copy/Save Functions ---
-  let conversationHistory = [];
-  function setupCopySave(widget) {
-    const copyBtn = widget.querySelector('#copy-conversation');
-    const saveBtn = widget.querySelector('#save-conversation');
     
-    // Fix for copy button
-    copyBtn.addEventListener('click', () => {
+    // --- Copy/Save Buttons ---
+    setupCopySave(widget);
+    
+    debug("Widget setup completed");
+  }
+  
+  // --- Show/Hide Widget ---
+  function showWidget() {
+    debug("Showing widget");
+    const widget = document.getElementById('librarian-widget') || createWidget();
+    
+    // First time setup if needed
+    if (!widget.dataset.initialized) {
+      setupWidget(widget);
+      widget.dataset.initialized = 'true';
+    }
+    
+    // Display greeting if conversation is empty
+    if (conversationHistory.length === 0) {
+      appendMessage('Librarian', 'Hello! I\'m your friendly librarian. Highlight text for definitions or ask me a question directly.');
+    }
+    
+    // Make widget visible with animation
+    widget.classList.add('visible');
+    widgetVisible = true;
+    
+    // Focus input field
+    setTimeout(() => {
+      const input = widget.querySelector('#user-input');
+      if (input) input.focus();
+    }, 300);
+    
+    debug("Widget is now visible");
+  }
+  
+  function hideWidget() {
+    debug("Hiding widget");
+    const widget = document.getElementById('librarian-widget');
+    if (widget) {
+      widget.classList.remove('visible');
+      widgetVisible = false;
+    }
+    debug("Widget hidden");
+  }
+  
+  // --- Toggle Widget ---
+  function toggleWidget() {
+    debug("Toggling widget visibility");
+    if (widgetVisible) {
+      hideWidget();
+    } else {
+      showWidget();
+    }
+  }
+  
+  // --- Input Handler ---
+  function setupInputHandler(widget) {
+    const userInput = widget.querySelector('#user-input');
+    
+    userInput.addEventListener('keydown', async function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        
+        const query = userInput.value.trim();
+        if (!query) return;
+        
+        debug(`Processing user input: ${query}`);
+        appendMessage('User', query);
+        userInput.value = '';
+        userInput.disabled = true;
+        
+        // Show loading indicator
+        const loadingId = showLoading();
+        
+        try {
+          // Check for local response first
+          const localResponse = handleLocalResponse(query);
+          
+          if (localResponse) {
+            // Use local response
+            debug("Using local response");
+            removeLoading(loadingId);
+            appendMessage('Librarian', localResponse);
+          } else {
+            // Call API
+            debug("Sending query to API");
+            const result = await runInference(query);
+            removeLoading(loadingId);
+            
+            if (result.error) {
+              appendMessage('Librarian', `Sorry, I encountered an error: ${result.error}`);
+            } else if (Array.isArray(result) && result[0]?.generated_text) {
+              appendMessage('Librarian', cleanResponse(result[0].generated_text));
+            } else if (result.generated_text) {
+              appendMessage('Librarian', cleanResponse(result.generated_text));
+            } else {
+              appendMessage('Librarian', "I received your request but couldn't generate a proper response. Please try again.");
+            }
+          }
+        } catch (error) {
+          debug(`Error processing query: ${error.message}`);
+          removeLoading(loadingId);
+          appendMessage('Librarian', `Sorry, I encountered an error: ${error.message || "Unknown error"}`);
+        } finally {
+          userInput.disabled = false;
+          userInput.focus();
+        }
+      }
+    });
+  }
+  
+  // --- Loading Indicator ---
+  function showLoading() {
+    const id = 'loading-' + Date.now();
+    const conversation = document.getElementById('conversation');
+    
+    if (conversation) {
+      const loadingMsg = document.createElement('div');
+      loadingMsg.id = id;
+      loadingMsg.innerHTML = '<strong>Librarian:</strong> <em>Looking that up for you...</em>';
+      conversation.appendChild(loadingMsg);
+      conversation.scrollTop = conversation.scrollHeight;
+    }
+    
+    return id;
+  }
+  
+  function removeLoading(id) {
+    const loadingMsg = document.getElementById(id);
+    if (loadingMsg) loadingMsg.remove();
+  }
+  
+  // --- Append Messages ---
+  function appendMessage(sender, text) {
+    conversationHistory.push({ sender, text });
+    
+    const conversation = document.getElementById('conversation');
+    if (!conversation) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+    conversation.appendChild(messageDiv);
+    
+    // Auto-scroll to bottom
+    conversation.scrollTop = conversation.scrollHeight;
+    
+    debug(`Appended message from ${sender}`);
+  }
+  
+  // --- Local Response Handler ---
+  function handleLocalResponse(query) {
+    const lowerQuery = query.toLowerCase().trim();
+    
+    // Common patterns
+    const patterns = {
+      greeting: /^(hi|hello|hey|greetings|howdy)(\s.*)?$/,
+      howAreYou: /^(how are you|how's it going|how are things|what's up)(\?)?$/,
+      thanks: /^(thank you|thanks|thx|ty)(\s.*)?$/,
+      goodbye: /^(bye|goodbye|see you|cya|farewell)(\s.*)?$/,
+      whoAreYou: /^(who are you|what are you)(\?)?$/,
+      help: /^(help|commands|options)$/,
+      test: /^(test|testing)$/
+    };
+    
+    // Check patterns and return appropriate response
+    if (patterns.greeting.test(lowerQuery)) {
+      return "Hello! How can I help you today?";
+    }
+    
+    if (patterns.howAreYou.test(lowerQuery)) {
+      return "I'm doing well, thank you for asking! How can I assist you?";
+    }
+    
+    if (patterns.thanks.test(lowerQuery)) {
+      return "You're welcome! Let me know if you need anything else.";
+    }
+    
+    if (patterns.goodbye.test(lowerQuery)) {
+      return "Goodbye! Feel free to come back if you have more questions.";
+    }
+    
+    if (patterns.whoAreYou.test(lowerQuery)) {
+      return "I'm your friendly librarian assistant. I can help with definitions, explanations, and answering questions.";
+    }
+    
+    if (patterns.help.test(lowerQuery)) {
+      return "You can ask me for definitions, highlight text with Ctrl+Shift+X, or ask me any questions. I'm here to assist you!";
+    }
+    
+    if (patterns.test.test(lowerQuery)) {
+      return "I'm working properly! How can I help you?";
+    }
+    
+    // No matching pattern found
+    return null;
+  }
+  
+  // --- Copy/Save Functionality ---
+  function setupCopySave(widget) {
+    // Copy button
+    widget.querySelector('#copy-conversation').addEventListener('click', function() {
       if (conversationHistory.length === 0) {
         alert('No conversation to copy.');
         return;
       }
       
-      const allText = conversationHistory.map(m => `${m.sender}: ${m.text}`).join('\n');
+      const text = conversationHistory.map(msg => `${msg.sender}: ${msg.text}`).join('\n');
       
-      // Modern clipboard API with fallback
       if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(allText)
+        navigator.clipboard.writeText(text)
           .then(() => alert('Conversation copied to clipboard!'))
           .catch(err => {
-            console.error('Failed to copy: ', err);
-            fallbackCopyTextToClipboard(allText);
+            debug(`Clipboard error: ${err.message}`);
+            fallbackCopy(text);
           });
       } else {
-        fallbackCopyTextToClipboard(allText);
+        fallbackCopy(text);
       }
     });
     
-    // Fallback copy method for older browsers
-    function fallbackCopyTextToClipboard(text) {
-      const textArea = document.createElement('textarea');
-      textArea.value = text;
-      
-      // Make the textarea out of viewport
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
-      textArea.style.top = '-999999px';
-      document.body.appendChild(textArea);
-      
-      // Save current focus and selection
-      const focused = document.activeElement;
-      const selection = document.getSelection().rangeCount > 0 ? 
-                        document.getSelection().getRangeAt(0) : false;
-      
-      textArea.select();
-      
-      try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-          alert('Conversation copied to clipboard!');
-        } else {
-          alert('Failed to copy conversation. Your browser may not support this feature.');
-        }
-      } catch (err) {
-        console.error('Failed to copy: ', err);
-        alert('Error copying to clipboard: ' + err);
-      }
-      
-      // Clean up
-      document.body.removeChild(textArea);
-      
-      // Restore original focus and selection
-      if (selection) {
-        document.getSelection().removeAllRanges();
-        document.getSelection().addRange(selection);
-      }
-      if (focused) {
-        focused.focus();
-      }
-    }
-    
-    // Fix for save button
-    saveBtn.addEventListener('click', () => {
+    // Save button
+    widget.querySelector('#save-conversation').addEventListener('click', function() {
       if (conversationHistory.length === 0) {
         alert('No conversation to save.');
         return;
       }
       
-      const allText = conversationHistory.map(m => `${m.sender}: ${m.text}`).join('\n');
-      const blob = new Blob([allText], { type: 'text/plain' });
-      
-      // Create download link and trigger it
-      const a = document.createElement('a');
+      const text = conversationHistory.map(msg => `${msg.sender}: ${msg.text}`).join('\n');
+      const blob = new Blob([text], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
       a.href = url;
-      a.download = 'conversation-' + new Date().toISOString().slice(0,10) + '.txt';
+      a.download = `slimscreen-conversation-${new Date().toISOString().slice(0, 10)}.txt`;
+      a.style.display = 'none';
+      
       document.body.appendChild(a);
       a.click();
       
-      // Clean up
       setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 100);
     });
-  }
-
-  // --- Setup Input Field for Follow-Up Questions ---
-  function setupInputHandler(widget) {
-    const userInput = widget.querySelector('#user-input');
     
-    // Fix for Enter key press handling
-    userInput.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault(); // Prevent default to ensure handling
-        const query = userInput.value.trim();
-        if (query) {
-          appendMessage('User', query);
-          userInput.value = '';
-          userInput.disabled = true; // Disable input while processing
-          
-          // Show loading message
-          const loadingId = showLoading();
-          
-          try {
-            // NEW: Handle common greetings locally to avoid strange responses
-            const response = handleLocalResponse(query) || await runInference(query);
-            
-            // Remove loading message
-            removeLoading(loadingId);
-            
-            if (typeof response === 'string') {
-              // It's a local response
-              appendMessage('Librarian', response);
-            } else {
-              // It's an API response
-              handleResult(response);
-            }
-          } catch (error) {
-            // Remove loading message and show error
-            removeLoading(loadingId);
-            appendMessage('Librarian', `Sorry, I encountered an error: ${error.message || "Unknown error"}`);
-          } finally {
-            userInput.disabled = false; // Re-enable input
-            userInput.focus(); // Return focus to input field
-          }
-        }
-      }
-    });
-  }
-
-  // --- NEW: Handle common queries locally ---
-  function handleLocalResponse(query) {
-    const lowerQuery = query.toLowerCase().trim();
-    
-    // Simple greeting patterns
-    if (/^(hi|hello|hey|greetings|howdy)(\s.*)?$/.test(lowerQuery)) {
-      return "Hello! How can I help you today?";
-    }
-    
-    // How are you patterns
-    if (/^(how are you|how's it going|how are things|what's up)(\?)?$/.test(lowerQuery)) {
-      return "I'm doing well, thank you for asking! How can I assist you?";
-    }
-    
-    // Thank you patterns
-    if (/^(thank you|thanks|thx|ty)(\s.*)?$/.test(lowerQuery)) {
-      return "You're welcome! Let me know if you need anything else.";
-    }
-    
-    // Goodbye patterns
-    if (/^(bye|goodbye|see you|cya|farewell)(\s.*)?$/.test(lowerQuery)) {
-      return "Goodbye! Feel free to come back if you have more questions.";
-    }
-    
-    // Who are you patterns
-    if (/^(who are you|what are you)(\?)?$/.test(lowerQuery)) {
-      return "I'm your friendly librarian assistant. I can help with definitions, explanations, and answering questions.";
-    }
-    
-    // Common commands
-    if (/^(help|commands|options)$/.test(lowerQuery)) {
-      return "You can ask me for definitions, highlight text with Ctrl+Shift+X, or ask me any questions. I'm here to assist you!";
-    }
-    
-    // Test pattern
-    if (/^(test|testing)$/.test(lowerQuery)) {
-      return "I'm working properly! How can I help you?";
-    }
-    
-    // For activate command
-    if (/^(activate|start|begin)$/.test(lowerQuery)) {
-      return "I'm active and ready to help. What can I assist you with?";
-    }
-    
-    // For bookmarklet command
-    if (/^(bookmarklet)$/.test(lowerQuery)) {
-      return "The bookmarklet allows you to activate me on any webpage. You can drag it to your bookmarks bar for easy access.";
-    }
-    
-    // No local response available
-    return null;
-  }
-
-  // --- Loading Indicator ---
-  function showLoading() {
-    const id = 'loading-' + Date.now();
-    const convDiv = document.getElementById('conversation');
-    if (convDiv) {
-      const msg = document.createElement('div');
-      msg.id = id;
-      msg.innerHTML = '<strong>Librarian:</strong> Looking that up for you...';
-      msg.style.fontStyle = 'italic';
-      convDiv.appendChild(msg);
-      convDiv.scrollTop = convDiv.scrollHeight;
-    }
-    return id;
-  }
-
-  function removeLoading(id) {
-    const loadingMsg = document.getElementById(id);
-    if (loadingMsg) {
-      loadingMsg.remove();
-    }
-  }
-
-  // --- Global Toggle Function ---
-  window.slimScreenToggle = function() {
-    const widget = ensureWidget();
-    if (widget.style.display === 'none' || widget.style.display === '') {
-      widget.style.display = 'block';
-      updateBookmarkletText("On");
+    // Fallback copy method
+    function fallbackCopy(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
       
-      // Only add greeting if conversation is empty
-      if (conversationHistory.length === 0) {
-        appendMessage('Librarian', 'Hello! I\'m your friendly librarian. Highlight text for definitions or ask me a question directly.');
+      document.body.appendChild(textarea);
+      textarea.select();
+      
+      try {
+        const success = document.execCommand('copy');
+        if (success) {
+          alert('Conversation copied to clipboard!');
+        } else {
+          alert('Unable to copy. Your browser may not support this feature.');
+        }
+      } catch (err) {
+        debug(`execCommand error: ${err.message}`);
+        alert('Copying failed. Your browser may not support this feature.');
       }
-    } else {
-      widget.style.display = 'none';
-      updateBookmarkletText("Off");
-    }
-  };
-
-  function updateBookmarkletText(state) {
-    const bm = document.getElementById('bookmarklet');
-    if (bm) bm.textContent = `SlimScreen: ${state}`;
-  }
-
-  // --- Conversation Logging ---
-  function appendMessage(sender, text) {
-    conversationHistory.push({ sender, text });
-    const convDiv = document.getElementById('conversation');
-    if (convDiv) {
-      const msg = document.createElement('div');
-      msg.innerHTML = `<strong>${sender}:</strong> ${text}`;
-      convDiv.appendChild(msg);
-      convDiv.scrollTop = convDiv.scrollHeight;
+      
+      document.body.removeChild(textarea);
     }
   }
-
-  // --- API Function (Combined Online/Offline) ---
+  
+  // --- API Call ---
   async function runInference(text) {
-    // Get the base URL dynamically
+    debug("Running inference");
+    
+    // Set base URL based on environment
     const baseUrl = window.location.hostname === 'localhost' || 
                    window.location.hostname === '127.0.0.1'
                    ? 'http://localhost:3000/api/infer'
                    : 'https://slim-screen.vercel.app/api/infer';
     
+    debug(`Using API endpoint: ${baseUrl}`);
+    
     try {
-      // First check if we're online
+      // Check online status
       if (!navigator.onLine) {
-        throw new Error("You appear to be offline. Please check your internet connection and try again.");
+        throw new Error("You appear to be offline. Please check your internet connection.");
       }
       
-      // Add a timeout for the fetch operation
+      // Set up request with timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
       
       const response = await fetch(baseUrl, {
         method: 'POST',
@@ -467,181 +544,175 @@
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
-          
-          // Check if the error is related to the Hugging Face token
-          if (errorMessage.includes("API token") || errorMessage.includes("Bearer")) {
-            errorMessage = "API authentication failed. Please check your Hugging Face API token configuration.";
-          }
         } catch (e) {
-          // If parsing the error fails, keep the default message
-          console.error("Error parsing error response:", e);
+          // Keep default error if parsing fails
         }
         throw new Error(errorMessage);
       }
       
       const result = await response.json();
-      
-      // Fallback for empty responses
-      if (!result.generated_text && (!Array.isArray(result) || !result[0]?.generated_text)) {
-        return { 
-          generated_text: "I received your request, but I'm not sure how to respond to that specific query. Could you try rephrasing or providing more context?"
-        };
-      }
+      debug("Received API response");
       
       return result;
     } catch (error) {
-      console.error("Inference error:", error);
+      debug(`API error: ${error.message}`);
       
-      // Handle specific error cases
+      // Handle specific errors
       if (error.name === 'AbortError') {
         return { 
-          generated_text: "Your request took too long to process. This might be due to high server load or connectivity issues. Please try again in a moment."
-        };
-      } else if (!navigator.onLine) {
-        return { 
-          generated_text: "I'm currently in offline mode with limited functionality. Please check your connection and try again."
-        };
-      } else if (error.message.includes("Hugging Face API error: Unprocessable Entity")) {
-        return {
-          generated_text: "I encountered a processing error. This might be due to the content of your request or temporary API limitations. Please try with simpler text or try again later."
+          generated_text: "Your request took too long. This might be due to server load or network issues. Please try again shortly."
         };
       }
       
-      // Generic error handler as fallback
+      if (!navigator.onLine) {
+        return { 
+          generated_text: "You appear to be offline. Please check your internet connection and try again."
+        };
+      }
+      
+      // Default error response
       return { 
-        generated_text: `I encountered an error: ${error.message}. Please try again or refresh the page.`
+        generated_text: `I encountered a problem: ${error.message}. Please try again later.`
       };
     }
   }
-
-  // --- Post-process API responses ---
-  function handleResult(result) {
-    if (result.error) {
-      appendMessage('Librarian', `Sorry, I encountered an error: ${result.error}`);
-    } else if (Array.isArray(result) && result[0]?.generated_text) {
-      // Clean the response of any prompt repetition or artifacts
-      const cleanedText = cleanResponse(result[0].generated_text);
-      appendMessage('Librarian', cleanedText);
-    } else if (result.generated_text) {
-      // Clean the response of any prompt repetition or artifacts
-      const cleanedText = cleanResponse(result.generated_text);
-      appendMessage('Librarian', cleanedText);
-    } else {
-      appendMessage('Librarian', "I received an unexpected response format. Please try again.");
-    }
-  }
-
-  // Updated, more thorough clean up responses function
+  
+  // --- Clean Response ---
   function cleanResponse(text) {
-    // We should have already cleaned the response on the server,
-    // but just in case, apply client-side cleaning as well
+    if (!text) return "I received your message, but couldn't generate a clear response.";
     
-    // Remove system prompt instructions and XML tags
-    const promptPatterns = [
+    // Remove system prompts, tags, and instructions
+    const patterns = [
       /<system>[\s\S]*?<\/system>/gi,
       /<user>[\s\S]*?<\/user>/gi,
       /<assistant>\s*/gi,
-      /You are a friendly female librarian[^.]*/gi,
-      /You are a friendly librarian[^.]*/gi,
-      /^You are a warm, friendly, and polite female librarian[^.]*/gi,
+      /You are a (friendly|helpful) librarian[^.]*/gi,
       /Keep your responses brief and helpful[^.]*/gi,
-      /Your tone is kind and approachable[^.]*/gi,
-      /security purposes/gi,
-      /monitoring and recording/gi,
-      /Role models Honor the important roles/gi
+      /Your tone is kind and approachable[^.]*/gi
     ];
     
     let cleaned = text;
     
-    // Apply all patterns
-    promptPatterns.forEach(pattern => {
+    // Apply all cleaning patterns
+    patterns.forEach(pattern => {
       cleaned = cleaned.replace(pattern, '');
     });
     
-    // Remove code artifacts
-    const codeArtifacts = /[A-Za-z]+::[A-Za-z]+\([^)]*\)[^;]*;|Console\.[A-Za-z]+\([^)]*\);|[A-Za-z]+Exception\(\);/g;
-    cleaned = cleaned.replace(codeArtifacts, '');
+    // Remove strange artifacts and phrases
+    const strangePatterns = [
+      /It is not my face, but a face that bothers me\./g,
+      /To a space, a space adjacent to hello\./g,
+      /For the past 14 years\./g,
+      /Your book's digital RSS feed\./g,
+      /FANT[A-Za-z]+::[^;]*;/g,
+      /Result = [^;]*;/g,
+      /DONT forget about receipts/g,
+      /Urban journals\./g
+    ];
     
-    // Remove strange patterns and random phrases
-    const strangePatterns = /FANT[A-Za-z]+::[^;]*;|Result = [^;]*;|DONT forget about receipts|Urban journals\.|It is not my face, but a face that bothers me\.|To a space, a space adjacent to hello\.|For the past 14 years\.|Your book's digital RSS feed\./g;
-    cleaned = cleaned.replace(strangePatterns, '');
+    strangePatterns.forEach(pattern => {
+      cleaned = cleaned.replace(pattern, '');
+    });
     
-    // Remove any responses that repeat the word "librarian" multiple times
-    if ((cleaned.match(/librarian/gi) || []).length > 2) {
-      const sentences = cleaned.split('.');
-      // Keep only sentences that don't mention "librarian"
-      cleaned = sentences.filter(s => !s.match(/librarian/gi)).join('.');
-    }
-    
-    // Trim extra whitespace and normalize spaces
+    // Clean whitespace and normalize
     cleaned = cleaned.trim().replace(/\s+/g, ' ');
     
-    // Ensure response starts with a capital letter and ends with punctuation
+    // Ensure proper formatting
     if (cleaned && cleaned.length > 0) {
-      // Capitalize first letter if needed
+      // Capitalize first letter
       cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
       
-      // Add period at the end if missing punctuation
+      // Add period if missing
       if (!/[.!?]$/.test(cleaned)) {
         cleaned += '.';
       }
     }
     
-    // If we've removed everything or if the response is too strange, provide a fallback
-    if (!cleaned || cleaned.length < 5 || 
-        /could you provide more context|I'm not sure what you mean|I'd need more information/.test(cleaned)) {
-      cleaned = "I understand. Let me know if you need help with anything specific.";
+    // Fallback if we've removed too much
+    if (!cleaned || cleaned.length < 5) {
+      cleaned = "I understand. Let me know if you need more information or have other questions.";
     }
     
     return cleaned;
   }
-
-  // --- Hotkey for Highlighted Text (Ctrl+Shift+X) ---
-  document.addEventListener('keydown', async (e) => {
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
-      const selectedText = window.getSelection().toString().trim();
-      if (selectedText) {
-        // Ensure widget is visible
-        const widget = ensureWidget();
-        widget.style.display = 'block';
-        updateBookmarkletText("On");
+  
+  // --- Hotkey Listener ---
+  function setupHotkey() {
+    debug("Setting up hotkey listener (Ctrl+Shift+X)");
+    
+    document.addEventListener('keydown', async function(e) {
+      // Check for Ctrl+Shift+X
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
+        debug("Hotkey triggered");
         
-        // Add greeting if conversation is empty
-        if (conversationHistory.length === 0) {
-          appendMessage('Librarian', 'Hello! I\'m your friendly librarian. Let me help you with that.');
+        const selectedText = window.getSelection().toString().trim();
+        if (!selectedText) {
+          alert('No text selected! Please highlight some text first.');
+          return;
         }
         
+        // Show widget if not visible
+        if (!widgetVisible) {
+          showWidget();
+        }
+        
+        // Process the selected text
         appendMessage('User', selectedText);
         
-        // Disable input field while processing
-        const userInput = widget.querySelector('#user-input');
+        // Disable input during processing
+        const userInput = document.getElementById('user-input');
         if (userInput) userInput.disabled = true;
         
-        // Show loading message
+        // Show loading indicator
         const loadingId = showLoading();
         
         try {
+          debug("Processing selected text");
           const result = await runInference(selectedText);
+          
           removeLoading(loadingId);
-          handleResult(result);
+          
+          if (result.error) {
+            appendMessage('Librarian', `Sorry, I encountered an error: ${result.error}`);
+          } else if (Array.isArray(result) && result[0]?.generated_text) {
+            appendMessage('Librarian', cleanResponse(result[0].generated_text));
+          } else if (result.generated_text) {
+            appendMessage('Librarian', cleanResponse(result.generated_text));
+          } else {
+            appendMessage('Librarian', "I received your selection but couldn't generate a proper response. Please try again.");
+          }
         } catch (error) {
+          debug(`Error processing selection: ${error.message}`);
           removeLoading(loadingId);
           appendMessage('Librarian', `Sorry, I encountered an error: ${error.message || "Unknown error"}`);
         } finally {
-          // Re-enable input field
+          // Re-enable input
           if (userInput) {
             userInput.disabled = false;
             userInput.focus();
           }
         }
-      } else {
-        alert('No text selected! Please highlight some text first.');
       }
-    }
-  });
-
-  // Do NOT automatically initialize widget - wait for bookmarklet click
+    });
+  }
   
-  // Signal that SlimScreen is loaded
-  window.slimScreenLoaded = true;
+  // --- Public Toggle Function ---
+  window.slimScreenToggle = function() {
+    debug("SlimScreen toggle called");
+    toggleWidget();
+  };
+  
+  // --- Initialization ---
+  function init() {
+    debug("Initializing SlimScreen");
+    setupHotkey();
+    
+    // Signal that SlimScreen is loaded
+    window.slimScreenLoaded = true;
+    
+    debug("SlimScreen initialized successfully");
+  }
+  
+  // Run initialization
+  init();
 })();
