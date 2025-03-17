@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  const apiUrl = 'https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-125M';
+  const apiUrl = 'https://api-inference.huggingface.co/models/EleutherAI/gpt-j-6B';
   const token = process.env.HUGGINGFACE_TOKEN;
   
   // System prompt moved to server-side only to prevent leakage
