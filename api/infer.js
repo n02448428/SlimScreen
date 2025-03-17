@@ -2,11 +2,13 @@ const fetch = require('node-fetch');
 const AbortController = require('abort-controller');
 
 module.exports = async (req, res) => {
+  // Set CORS headers for all responses
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     return res.status(200).end();
   }
 
@@ -15,13 +17,11 @@ module.exports = async (req, res) => {
 
   if (!token) {
     console.error("HUGGINGFACE_TOKEN is not set in environment variables");
-    res.setHeader("Access-Control-Allow-Origin", "*");
     return res.status(500).json({ error: "API token not configured" });
   }
 
   if (!req.body || !req.body.inputs) {
     console.error("Missing required 'inputs' field in request body");
-    res.setHeader("Access-Control-Allow-Origin", "*");
     return res.status(400).json({ error: "Missing required 'inputs' field" });
   }
 
@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), 25000); // Reduced timeout to 25 seconds
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -46,27 +46,24 @@ module.exports = async (req, res) => {
 
     if (response.status === 503) {
       console.error("Model endpoint returned 503 - Service Unavailable");
-      res.setHeader("Access-Control-Allow-Origin", "*");
       return res.status(503).json({ error: "Model endpoint is temporarily unavailable. Please try again later." });
     }
 
-    const text = await response.text();
     let data;
     try {
+      const text = await response.text();
       data = JSON.parse(text);
     } catch (jsonError) {
-      console.error("Invalid JSON received:", text);
-      throw new Error("Invalid JSON received from Hugging Face");
+      console.error("Invalid JSON received:", jsonError);
+      return res.status(500).json({ error: "Invalid response received from Hugging Face" });
     }
 
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.status(200).json(data);
+    return res.status(200).json(data);
   } catch (error) {
     console.error("Proxy error:", error);
-    res.setHeader("Access-Control-Allow-Origin", "*");
     const errorMessage = error.name === 'AbortError' 
-      ? "Request timed out after 30 seconds" 
+      ? "Request timed out after 25 seconds" 
       : error.message;
-    res.status(500).json({ error: "Proxy inference failed", details: errorMessage });
+    return res.status(500).json({ error: "Proxy inference failed", details: errorMessage });
   }
 };

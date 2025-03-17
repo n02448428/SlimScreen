@@ -110,12 +110,16 @@
           // Show loading message
           const loadingId = showLoading();
           
-          const result = await runOnlineInference(query);
-          
-          // Remove loading message
-          removeLoading(loadingId);
-          
-          handleResult(result);
+          try {
+            const result = await runOnlineInference(query);
+            // Remove loading message
+            removeLoading(loadingId);
+            handleResult(result);
+          } catch (error) {
+            // Remove loading message and show error
+            removeLoading(loadingId);
+            appendMessage('Librarian', `Sorry, I encountered an error: ${error.message || "Unknown error"}`);
+          }
         }
       }
     });
@@ -149,6 +153,7 @@
     if (widget.style.display === 'none' || widget.style.display === '') {
       widget.style.display = 'block';
       updateBookmarkletText("On");
+      appendMessage('Librarian', 'Hello! Highlight text on this page and press Ctrl+Shift+X, or ask me a question directly.');
     } else {
       widget.style.display = 'none';
       updateBookmarkletText("Off");
@@ -174,6 +179,7 @@
 
   // --- Online Inference ---
   const librarianInstruction = "You are a warm, friendly, and polite female librarian who always provides clear definitions, context, and concise insights. Never use bad words. Keep your responses brief unless follow-ups are requested.";
+  
   async function runOnlineInference(text) {
     // Get the base URL dynamically
     const baseUrl = window.location.hostname === 'localhost' || 
@@ -182,23 +188,40 @@
                     : 'https://slim-screen.vercel.app/api/infer';
                     
     const prompt = librarianInstruction + " " + text;
+    
     try {
+      // Add a timeout for the fetch operation
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+      
       const response = await fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inputs: prompt })
+        body: JSON.stringify({ inputs: prompt }),
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
+        let errorMessage = `Server error: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If parsing the error fails, keep the default message
+        }
+        throw new Error(errorMessage);
       }
       
       const result = await response.json();
       return result;
     } catch (error) {
       console.error("Online inference error:", error);
-      return { error: error.message || "Failed to connect to inference API" };
+      if (error.name === 'AbortError') {
+        throw new Error("Request timed out. Please try again.");
+      }
+      throw new Error(error.message || "Failed to connect to inference API");
     }
   }
 
@@ -212,6 +235,12 @@
     } else {
       appendMessage('Librarian', "I received an unexpected response format. Please try again.");
     }
+  }
+
+  // --- Offline Fallback Mode (using a simpler model) ---
+  function getOfflineResponse(text) {
+    // Extremely simple fallback
+    return "I'm currently in offline mode with limited functionality. Please check your connection and try again.";
   }
 
   // --- Hotkey for Highlighted Text (Ctrl+Shift+X) ---
@@ -229,12 +258,14 @@
         // Show loading message
         const loadingId = showLoading();
         
-        const result = await runOnlineInference(selectedText);
-        
-        // Remove loading message
-        removeLoading(loadingId);
-        
-        handleResult(result);
+        try {
+          const result = await runOnlineInference(selectedText);
+          removeLoading(loadingId);
+          handleResult(result);
+        } catch (error) {
+          removeLoading(loadingId);
+          appendMessage('Librarian', `Sorry, I encountered an error: ${error.message || "Unknown error"}`);
+        }
       } else {
         alert('No text selected! Please highlight some text first.');
       }
