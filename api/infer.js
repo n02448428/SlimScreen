@@ -15,8 +15,8 @@ module.exports = async (req, res) => {
   const apiUrl = 'https://api-inference.huggingface.co/models/microsoft/DialoGPT-small';
   const token = process.env.HUGGINGFACE_TOKEN;
   
-  // System prompt moved to server-side only to prevent leakage
-  const librarianInstruction = "You are a warm, friendly, and polite female librarian who always provides clear definitions, context, and concise insights. Never use bad words. Keep your responses brief unless follow-ups are requested. RESPOND ONLY WITH NATURAL LANGUAGE. DO NOT OUTPUT CODE OR TECHNICAL ARTIFACTS. ";
+  // Improved system prompt for friendly female librarian character
+  const librarianInstruction = "You are a warm, friendly, and polite female librarian who always provides clear definitions, context, and concise insights. Keep your responses brief and helpful. Your tone is kind and approachable. ";
 
   if (!token) {
     console.error("HUGGINGFACE_TOKEN is not set in environment variables");

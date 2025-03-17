@@ -24,7 +24,7 @@
           <button id="widget-close" style="float: right;">X</button>
         </div>
         <div id="conversation" style="max-height: 200px; overflow-y: auto; padding: 10px; font-size: 0.9em;"></div>
-        <input id="user-input" type="text" placeholder="Ask a follow-up question..." style="width: calc(100% - 20px); margin: 10px; padding: 5px;" />
+        <input id="user-input" type="text" placeholder="Ask me anything..." style="width: calc(100% - 20px); margin: 10px; padding: 5px;" />
         <div id="widget-buttons" style="padding: 0 10px 10px;">
           <button id="copy-conversation">Copy Conversation</button>
           <button id="save-conversation">Save Conversation</button>
@@ -67,18 +67,38 @@
   function setupCopySave(widget) {
     const copyBtn = widget.querySelector('#copy-conversation');
     const saveBtn = widget.querySelector('#save-conversation');
+    
     copyBtn.addEventListener('click', () => {
       if (conversationHistory.length === 0) {
         alert('No conversation to copy.');
         return;
       }
       const allText = conversationHistory.map(m => `${m.sender}: ${m.text}`).join('\n');
-      navigator.clipboard.writeText(allText).then(() => {
-        alert('Conversation copied to clipboard!');
-      }).catch(err => {
-        alert('Clipboard write not allowed: ' + err.message);
-      });
+      
+      // Fix for clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = allText;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          alert('Conversation copied to clipboard!');
+        } else {
+          alert('Failed to copy conversation. Your browser may not support this feature.');
+        }
+      } catch (err) {
+        alert('Error copying to clipboard: ' + err);
+      }
+      
+      document.body.removeChild(textArea);
     });
+    
     saveBtn.addEventListener('click', () => {
       if (conversationHistory.length === 0) {
         alert('No conversation to save.');
@@ -86,26 +106,37 @@
       }
       const allText = conversationHistory.map(m => `${m.sender}: ${m.text}`).join('\n');
       const blob = new Blob([allText], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
+      
+      // Create download link and trigger it
       const a = document.createElement('a');
+      const url = URL.createObjectURL(blob);
       a.href = url;
-      a.download = 'conversation.txt';
+      a.download = 'conversation-' + new Date().toISOString().slice(0,10) + '.txt';
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
     });
   }
 
   // --- Setup Input Field for Follow-Up Questions ---
   function setupInputHandler(widget) {
     const userInput = widget.querySelector('#user-input');
-    userInput.addEventListener('keypress', async (e) => {
+    
+    // Fix for Enter key press handling
+    userInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Enter') {
+        e.preventDefault(); // Prevent default to ensure handling
         const query = userInput.value.trim();
         if (query) {
           appendMessage('User', query);
           userInput.value = '';
+          userInput.disabled = true; // Disable input while processing
           
           // Show loading message
           const loadingId = showLoading();
@@ -119,6 +150,9 @@
             // Remove loading message and show error
             removeLoading(loadingId);
             appendMessage('Librarian', `Sorry, I encountered an error: ${error.message || "Unknown error"}`);
+          } finally {
+            userInput.disabled = false; // Re-enable input
+            userInput.focus(); // Return focus to input field
           }
         }
       }
@@ -132,7 +166,7 @@
     if (convDiv) {
       const msg = document.createElement('div');
       msg.id = id;
-      msg.textContent = 'Librarian: Thinking...';
+      msg.textContent = 'Librarian: Looking that up for you...';
       msg.style.fontStyle = 'italic';
       convDiv.appendChild(msg);
       convDiv.scrollTop = convDiv.scrollHeight;
@@ -153,7 +187,11 @@
     if (widget.style.display === 'none' || widget.style.display === '') {
       widget.style.display = 'block';
       updateBookmarkletText("On");
-      appendMessage('Librarian', 'Hello! Highlight text on this page and press Ctrl+Shift+X, or ask me a question directly.');
+      
+      // Only add greeting if conversation is empty
+      if (conversationHistory.length === 0) {
+        appendMessage('Librarian', 'Hello! I\'m your friendly librarian assistant. Highlight text on this page and press Ctrl+Shift+X, or ask me a question directly.');
+      }
     } else {
       widget.style.display = 'none';
       updateBookmarkletText("Off");
@@ -171,14 +209,14 @@
     const convDiv = document.getElementById('conversation');
     if (convDiv) {
       const msg = document.createElement('div');
-      msg.textContent = `${sender}: ${text}`;
+      msg.innerHTML = `<strong>${sender}:</strong> ${text}`;
+      msg.style.marginBottom = '8px';
       convDiv.appendChild(msg);
       convDiv.scrollTop = convDiv.scrollHeight;
     }
   }
 
   // --- API Function (Combined Online/Offline) ---
-  // The system prompt is now kept on the server side only
   async function runInference(text) {
     // Get the base URL dynamically
     const baseUrl = window.location.hostname === 'localhost' || 
@@ -243,20 +281,31 @@
 
   // Clean up responses to remove prompt leakage or code artifacts
   function cleanResponse(text) {
-    // Remove any leaked prompt instructions
-    const promptPattern = /You are a warm, friendly, and polite female librarian[^]*?\. /;
-    let cleaned = text.replace(promptPattern, '');
+    // Remove the system prompt instructions completely
+    const promptPatterns = [
+      /You are a warm, friendly, and polite female librarian[^]*?NATURAL LANGUAGE\./i,
+      /Never use bad words\.[^]*?NATURAL LANGUAGE\./i,
+      /DO NOT OUTPUT CODE OR TECHNICAL ARTIFACTS\./i,
+      /RESPOND ONLY WITH NATURAL LANGUAGE\./i
+    ];
     
-    // Remove any code-like artifacts that might appear
+    let cleaned = text;
+    
+    // Apply all patterns
+    promptPatterns.forEach(pattern => {
+      cleaned = cleaned.replace(pattern, '');
+    });
+    
+    // Remove code artifacts
     const codeArtifacts = /[A-Za-z]+::[A-Za-z]+\([^)]*\)[^;]*;|Console\.[A-Za-z]+\([^)]*\);|[A-Za-z]+Exception\(\);/g;
     cleaned = cleaned.replace(codeArtifacts, '');
     
-    // Remove any remaining strange patterns
-    const strangePatterns = /FANT[A-Za-z]+::[^;]*;|Result = [^;]*;/g;
+    // Remove strange patterns and random phrases that shouldn't be there
+    const strangePatterns = /FANT[A-Za-z]+::[^;]*;|Result = [^;]*;|DONT forget about receipts|Urban journals\./g;
     cleaned = cleaned.replace(strangePatterns, '');
     
-    // Trim extra whitespace
-    cleaned = cleaned.trim();
+    // Trim extra whitespace and normalize spaces
+    cleaned = cleaned.trim().replace(/\s+/g, ' ');
     
     // If we've removed everything, provide a fallback
     if (!cleaned) {
@@ -276,7 +325,16 @@
         widget.style.display = 'block';
         updateBookmarkletText("On");
         
+        // Add greeting if conversation is empty
+        if (conversationHistory.length === 0) {
+          appendMessage('Librarian', 'Hello! I\'m your friendly librarian assistant. Let me help you with that.');
+        }
+        
         appendMessage('User', selectedText);
+        
+        // Disable input field while processing
+        const userInput = widget.querySelector('#user-input');
+        if (userInput) userInput.disabled = true;
         
         // Show loading message
         const loadingId = showLoading();
@@ -288,6 +346,12 @@
         } catch (error) {
           removeLoading(loadingId);
           appendMessage('Librarian', `Sorry, I encountered an error: ${error.message || "Unknown error"}`);
+        } finally {
+          // Re-enable input field
+          if (userInput) {
+            userInput.disabled = false;
+            userInput.focus();
+          }
         }
       } else {
         alert('No text selected! Please highlight some text first.');
