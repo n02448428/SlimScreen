@@ -33,6 +33,7 @@
       document.body.appendChild(widget);
       setupWidget(widget);
     }
+    return widget;
   }
 
   // --- Setup Widget Events (Draggable, Close, etc.) ---
@@ -72,8 +73,10 @@
         return;
       }
       const allText = conversationHistory.map(m => `${m.sender}: ${m.text}`).join('\n');
-      navigator.clipboard.writeText(allText).catch(err => {
-        alert('Clipboard write not allowed.');
+      navigator.clipboard.writeText(allText).then(() => {
+        alert('Conversation copied to clipboard!');
+      }).catch(err => {
+        alert('Clipboard write not allowed: ' + err.message);
       });
     });
     saveBtn.addEventListener('click', () => {
@@ -90,6 +93,7 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     });
   }
 
@@ -102,17 +106,46 @@
         if (query) {
           appendMessage('User', query);
           userInput.value = '';
+          
+          // Show loading message
+          const loadingId = showLoading();
+          
           const result = await runOnlineInference(query);
+          
+          // Remove loading message
+          removeLoading(loadingId);
+          
           handleResult(result);
         }
       }
     });
   }
 
+  // --- Loading Indicator ---
+  function showLoading() {
+    const id = 'loading-' + Date.now();
+    const convDiv = document.getElementById('conversation');
+    if (convDiv) {
+      const msg = document.createElement('div');
+      msg.id = id;
+      msg.textContent = 'Librarian: Thinking...';
+      msg.style.fontStyle = 'italic';
+      convDiv.appendChild(msg);
+      convDiv.scrollTop = convDiv.scrollHeight;
+    }
+    return id;
+  }
+
+  function removeLoading(id) {
+    const loadingMsg = document.getElementById(id);
+    if (loadingMsg) {
+      loadingMsg.remove();
+    }
+  }
+
   // --- Global Toggle Function ---
   window.slimScreenToggle = function() {
-    ensureWidget();
-    const widget = document.getElementById('librarian-widget');
+    const widget = ensureWidget();
     if (widget.style.display === 'none' || widget.style.display === '') {
       widget.style.display = 'block';
       updateBookmarkletText("On");
@@ -142,31 +175,42 @@
   // --- Online Inference ---
   const librarianInstruction = "You are a warm, friendly, and polite female librarian who always provides clear definitions, context, and concise insights. Never use bad words. Keep your responses brief unless follow-ups are requested.";
   async function runOnlineInference(text) {
+    // Get the base URL dynamically
+    const baseUrl = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1'
+                    ? 'http://localhost:3000/api/infer'
+                    : 'https://slim-screen.vercel.app/api/infer';
+                    
     const prompt = librarianInstruction + " " + text;
     try {
-      const response = await fetch('https://slim-screen.vercel.app/api/infer', {
+      const response = await fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inputs: prompt })
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server error: ${response.status}`);
+      }
+      
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Network response was not ok");
       return result;
     } catch (error) {
       console.error("Online inference error:", error);
-      return { error: error.message };
+      return { error: error.message || "Failed to connect to inference API" };
     }
   }
 
   function handleResult(result) {
     if (result.error) {
-      appendMessage('Librarian', result.error);
-    } else if (Array.isArray(result) && result[0].generated_text) {
+      appendMessage('Librarian', `Sorry, I encountered an error: ${result.error}`);
+    } else if (Array.isArray(result) && result[0]?.generated_text) {
       appendMessage('Librarian', result[0].generated_text);
     } else if (result.generated_text) {
       appendMessage('Librarian', result.generated_text);
     } else {
-      appendMessage('Librarian', JSON.stringify(result));
+      appendMessage('Librarian', "I received an unexpected response format. Please try again.");
     }
   }
 
@@ -175,12 +219,35 @@
     if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
       const selectedText = window.getSelection().toString().trim();
       if (selectedText) {
+        // Ensure widget is visible
+        const widget = ensureWidget();
+        widget.style.display = 'block';
+        updateBookmarkletText("On");
+        
         appendMessage('User', selectedText);
+        
+        // Show loading message
+        const loadingId = showLoading();
+        
         const result = await runOnlineInference(selectedText);
+        
+        // Remove loading message
+        removeLoading(loadingId);
+        
         handleResult(result);
       } else {
-        alert('No text selected!');
+        alert('No text selected! Please highlight some text first.');
       }
     }
   });
+
+  // Initialize the widget if this script is loaded directly
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    ensureWidget();
+  } else {
+    document.addEventListener('DOMContentLoaded', ensureWidget);
+  }
+  
+  // Signal that SlimScreen is loaded
+  window.slimScreenLoaded = true;
 })();
