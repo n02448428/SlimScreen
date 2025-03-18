@@ -3,99 +3,222 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SlimScreen AI - Friendly Librarian</title>
+  <title>SlimScreen AI with Lexi - Your Research Assistant</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
     body {
-      font-family: sans-serif;
-      padding: 20px;
-      background: #f0f0f0;
-      color: #333;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 0;
       margin: 0;
+      background: #0F1117;
+      color: #f0f0f0;
+      line-height: 1.6;
     }
-    /* Welcome page styling */
+    
+    /* Dark mode styling */
     #welcome {
-      max-width: 600px;
-      margin: 0 auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      max-width: 640px;
+      margin: 40px auto;
+      background: #161925;
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      border: 1px solid rgba(95, 99, 242, 0.2);
     }
+    
+    h1 {
+      margin-top: 0;
+      font-weight: 600;
+      font-size: 28px;
+      color: #fff;
+      position: relative;
+      display: inline-block;
+    }
+    
+    h1:after {
+      content: '';
+      position: absolute;
+      left: 0;
+      bottom: -8px;
+      width: 60px;
+      height: 3px;
+      background: #5F63F2;
+      border-radius: 3px;
+    }
+    
+    p {
+      color: #e0e0e0;
+      margin-bottom: 20px;
+    }
+    
     #bookmarklet {
       display: inline-block;
-      background: #4a90e2;
+      background: #5F63F2;
       color: #fff;
-      padding: 10px 15px;
-      border-radius: 4px;
+      padding: 12px 20px;
+      border-radius: 6px;
       text-decoration: none;
-      margin-top: 15px;
+      margin-top: 20px;
       cursor: move;
+      font-weight: 500;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(95, 99, 242, 0.3);
     }
+    
+    #bookmarklet:hover {
+      background: #6D71FF;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(95, 99, 242, 0.4);
+    }
+    
+    .bookmarklet-instructions {
+      margin: 24px 0;
+      padding: 16px;
+      background: rgba(95, 99, 242, 0.1);
+      border-radius: 8px;
+      border: 1px solid rgba(95, 99, 242, 0.2);
+    }
+    
     /* Feature list styling */
     .feature-list {
-      margin-top: 25px;
+      margin-top: 32px;
     }
+    
+    h2 {
+      font-weight: 600;
+      font-size: 20px;
+      color: #fff;
+      margin-top: 32px;
+      margin-bottom: 16px;
+    }
+    
     .feature-item {
       margin-bottom: 12px;
       display: flex;
+      align-items: flex-start;
     }
+    
     .feature-icon {
-      margin-right: 10px;
-      color: #4a90e2;
+      margin-right: 12px;
+      color: #5F63F2;
       font-weight: bold;
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      background: rgba(95, 99, 242, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
+    
     .demo-gif {
       max-width: 100%;
       border-radius: 8px;
-      margin: 20px 0;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin: 24px 0;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    ul {
+      padding-left: 20px;
+    }
+    
+    li {
+      margin-bottom: 8px;
+    }
+    
+    li strong {
+      color: #5F63F2;
+    }
+    
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      font-size: 14px;
+      color: #a0a0a0;
+      text-align: center;
+    }
+    
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      #welcome {
+        margin: 20px;
+        padding: 24px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
     }
   </style>
 </head>
 <body>
   <div id="welcome">
-    <h1>SlimScreen AI - Friendly Librarian</h1>
+    <h1>SlimScreen AI with Lexi</h1>
     <p>
-      Your personal research assistant that provides clear definitions and context for any highlighted text. Get instant insights without leaving your current page!
+      Your personal research assistant with a sleek, modern interface. Lexi helps you understand any text with 
+      concise definitions and explanations - directly on your screen without disrupting your flow.
     </p>
     
-    <p>
-      To use SlimScreen on any webpage, drag this bookmarklet to your bookmarks bar:
-    </p>
-    <a id="bookmarklet" href="javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://slim-screen.vercel.app/slimscreen.js';s.onload=function(){window.slimScreenLoaded=true;if(window.slimScreenToggle){window.slimScreenToggle();}};document.body.appendChild(s);}else{if(window.slimScreenToggle){window.slimScreenToggle();}}})();">SlimScreen: Off</a>
+    <div class="bookmarklet-instructions">
+      <p>
+        <strong>To use SlimScreen on any webpage:</strong> Drag this bookmarklet to your bookmarks bar:
+      </p>
+      <a id="bookmarklet" href="javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://slim-screen.vercel.app/slimscreen.js';s.onload=function(){window.slimScreenLoaded=true;if(window.slimScreenToggle){window.slimScreenToggle();}};document.body.appendChild(s);}else{if(window.slimScreenToggle){window.slimScreenToggle();}}})();">Lexi: Research Assistant</a>
+    </div>
     
     <div class="feature-list">
       <h2>How It Works:</h2>
       <div class="feature-item">
-        <span class="feature-icon">1.</span>
+        <div class="feature-icon">1</div>
         <span>Drag the bookmarklet to your bookmarks bar</span>
       </div>
       <div class="feature-item">
-        <span class="feature-icon">2.</span>
-        <span>Visit any webpage and click the bookmarklet to activate</span>
+        <div class="feature-icon">2</div>
+        <span>Visit any webpage and click the bookmarklet to activate Lexi</span>
       </div>
       <div class="feature-item">
-        <span class="feature-icon">3.</span>
-        <span>Highlight any text and press <strong>Ctrl+Shift+X</strong></span>
+        <div class="feature-icon">3</div>
+        <span>Highlight any text and press <strong>Ctrl+Shift+X</strong> for instant definitions</span>
       </div>
       <div class="feature-item">
-        <span class="feature-icon">4.</span>
-        <span>Get instant definitions and context from your friendly librarian</span>
+        <div class="feature-icon">4</div>
+        <span>Get concise, clear explanations from Lexi - your personal research assistant</span>
       </div>
       <div class="feature-item">
-        <span class="feature-icon">5.</span>
-        <span>Ask follow-up questions directly in the widget</span>
+        <div class="feature-icon">5</div>
+        <span>Continue the conversation to dive deeper into any topic</span>
       </div>
     </div>
     
     <div style="margin-top: 30px;">
       <h2>Features:</h2>
       <ul>
-        <li><strong>Quick Definitions:</strong> Instantly get clear explanations for technical terms, jargon, or any text</li>
-        <li><strong>Drag & Resize:</strong> Position the widget anywhere on your screen</li>
-        <li><strong>Save Conversations:</strong> Export your insights for later reference</li>
-        <li><strong>Works Everywhere:</strong> Compatible with most websites</li>
+        <li><strong>Concise Explanations:</strong> Lexi provides clear, brief definitions for any highlighted text</li>
+        <li><strong>Sleek Design:</strong> Dark mode interface with modern aesthetics and minimal footprint</li>
+        <li><strong>Drag & Resize:</strong> Position and resize the widget anywhere on your screen</li>
+        <li><strong>Save Conversations:</strong> Export your insights with one click</li>
+        <li><strong>Privacy First:</strong> Your data is never stored - conversations clear when you close Lexi</li>
       </ul>
+    </div>
+    
+    <div class="feature-list">
+      <h2>Mobile/Tablet Users:</h2>
+      <div class="feature-item">
+        <div class="feature-icon">→</div>
+        <span><strong>iOS (Safari):</strong> Add a bookmark, then edit it and paste the bookmarklet code in the URL field</span>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">→</div>
+        <span><strong>Android:</strong> Create a new bookmark and paste the bookmarklet code as the URL</span>
+      </div>
+    </div>
+    
+    <div class="footer">
+      SlimScreen AI with Lexi - Your research assistant is just a highlight away. 
     </div>
   </div>
 

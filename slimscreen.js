@@ -1,4 +1,6 @@
-// Immediately-invoked function to isolate our scope
+// Complete overhaul of SlimScreen.js
+// Focusing on a more lightweight, sleek implementation with Lexi as the assistant
+
 (function() {
   // --- Global Variables ---
   let conversationHistory = [];
@@ -67,125 +69,214 @@
     debug("Creating widget");
     
     // First inject styles with !important to override page styles
-    const styleId = 'librarian-widget-styles';
+    const styleId = 'lexi-widget-styles';
     if (!document.getElementById(styleId)) {
       const style = document.createElement('style');
       style.id = styleId;
       style.textContent = `
+        /* Dark, sleek styling */
         #librarian-widget, #librarian-widget * {
-          font-family: 'Arial', sans-serif !important;
+          font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif !important;
           line-height: 1.5 !important;
           box-sizing: border-box !important;
         }
+        
         #librarian-widget {
           position: fixed !important;
           top: 20px !important;
-          left: 20px !important;
+          right: 20px !important; /* Changed from left to right */
           width: 320px !important;
-          background: rgba(255, 255, 255, 0.95) !important;
-          backdrop-filter: blur(5px) !important;
-          border: 1px solid rgba(74, 144, 226, 0.7) !important;
-          border-radius: 8px !important;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
-          z-index: 2147483647 !important; /* Maximum z-index value */
-          transition: width 0.3s, height 0.3s !important;
-          color: #333 !important;
+          background: rgba(22, 25, 37, 0.85) !important; /* Dark with transparency */
+          backdrop-filter: blur(10px) !important;
+          -webkit-backdrop-filter: blur(10px) !important; /* For Safari */
+          border: 1px solid rgba(95, 99, 242, 0.3) !important; /* Subtle purple-blue */
+          border-radius: 12px !important; /* More rounded corners */
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+          z-index: 2147483647 !important;
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important; /* Smoother transition */
+          color: #e0e0e0 !important;
           font-size: 14px !important;
           opacity: 0 !important;
           pointer-events: none !important;
-          transform: translateY(-10px) !important;
-          transition: opacity 0.3s ease, transform 0.3s ease !important;
+          transform: translateY(-10px) scale(0.98) !important;
         }
+        
         #librarian-widget.visible {
           opacity: 1 !important;
           pointer-events: all !important;
-          transform: translateY(0) !important;
+          transform: translateY(0) scale(1) !important;
         }
+        
         #widget-header {
           cursor: move !important;
-          padding: 8px 12px !important;
-          background: rgba(74, 144, 226, 0.8) !important;
-          border-radius: 7px 7px 0 0 !important;
+          padding: 12px 16px !important;
+          background: rgba(45, 48, 65, 0.6) !important; /* Darker header */
+          border-radius: 12px 12px 0 0 !important;
           user-select: none !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
         }
+        
         #widget-header strong {
           color: #fff !important;
           font-size: 14px !important;
-          font-weight: bold !important;
+          font-weight: 600 !important; /* Semibold instead of bold */
         }
+        
+        .widget-logo {
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+        }
+        
+        .widget-logo-icon {
+          color: #8A8FFF !important; /* Purple-blue */
+          font-size: 16px !important;
+        }
+        
         #widget-close {
-          float: right !important;
-          background: transparent !important;
+          background: rgba(78, 81, 98, 0.4) !important;
           border: none !important;
           color: #fff !important;
-          font-weight: bold !important;
+          font-weight: normal !important;
           cursor: pointer !important;
-          font-size: 16px !important;
-          padding: 0 !important;
-          margin: 0 !important;
-          line-height: 1 !important;
+          font-size: 14px !important;
+          padding: 4px 8px !important;
+          border-radius: 4px !important;
+          transition: background 0.2s !important;
         }
+        
+        #widget-close:hover {
+          background: rgba(95, 99, 242, 0.5) !important;
+        }
+        
         #conversation {
           max-height: 250px !important;
           overflow-y: auto !important;
-          padding: 12px !important;
+          padding: 16px !important;
           background: transparent !important;
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 12px !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: rgba(95, 99, 242, 0.3) rgba(22, 25, 37, 0.2) !important;
         }
+        
+        #conversation::-webkit-scrollbar {
+          width: 6px !important;
+        }
+        
+        #conversation::-webkit-scrollbar-track {
+          background: rgba(22, 25, 37, 0.2) !important;
+        }
+        
+        #conversation::-webkit-scrollbar-thumb {
+          background-color: rgba(95, 99, 242, 0.3) !important;
+          border-radius: 6px !important;
+        }
+        
         #conversation div {
-          margin-bottom: 8px !important;
-          color: #333 !important;
+          margin-bottom: 0 !important; /* Remove default margin, using gap instead */
+          color: #e0e0e0 !important;
         }
-        #conversation strong {
-          font-weight: bold !important;
-          color: #333 !important;
+        
+        .message-user {
+          align-self: flex-end !important;
+          background: rgba(95, 99, 242, 0.2) !important;
+          padding: 8px 12px !important;
+          border-radius: 12px 12px 0 12px !important;
+          max-width: 85% !important;
         }
+        
+        .message-lexi {
+          align-self: flex-start !important;
+          background: rgba(45, 48, 65, 0.6) !important;
+          padding: 8px 12px !important;
+          border-radius: 12px 12px 12px 0 !important;
+          max-width: 85% !important;
+        }
+        
+        .sender {
+          font-size: 12px !important;
+          opacity: 0.7 !important;
+          margin-bottom: 4px !important;
+        }
+        
+        .sender.lexi {
+          color: #8A8FFF !important; /* Purple-blue */
+        }
+        
+        .sender.user {
+          color: #A4A9FF !important; /* Lighter purple-blue */
+        }
+        
         #user-input {
-          width: calc(100% - 24px) !important;
-          margin: 8px 12px !important;
-          padding: 8px !important;
-          border: 1px solid rgba(204, 204, 204, 0.6) !important;
-          border-radius: 4px !important;
+          width: calc(100% - 32px) !important;
+          margin: 8px 16px 16px !important;
+          padding: 10px 14px !important;
+          border: 1px solid rgba(95, 99, 242, 0.2) !important;
+          border-radius: 8px !important;
           font-size: 14px !important;
-          color: #333 !important;
-          background: rgba(255, 255, 255, 0.9) !important;
+          color: #e0e0e0 !important;
+          background: rgba(45, 48, 65, 0.6) !important;
+          transition: border-color 0.3s !important;
         }
+        
+        #user-input:focus {
+          outline: none !important;
+          border-color: rgba(95, 99, 242, 0.6) !important;
+          box-shadow: 0 0 0 2px rgba(95, 99, 242, 0.15) !important;
+        }
+        
+        #user-input::placeholder {
+          color: rgba(224, 224, 224, 0.5) !important;
+        }
+        
         #widget-buttons {
-          padding: 0 12px 12px !important;
+          padding: 0 16px 16px !important;
           display: flex !important;
           justify-content: space-between !important;
+          gap: 8px !important;
         }
+        
         #widget-buttons button {
-          background: rgba(74, 144, 226, 0.8) !important;
-          color: #fff !important;
-          border: none !important;
-          padding: 6px 12px !important;
-          border-radius: 4px !important;
+          background: rgba(45, 48, 65, 0.8) !important;
+          color: #e0e0e0 !important;
+          border: 1px solid rgba(95, 99, 242, 0.2) !important;
+          padding: 8px 12px !important;
+          border-radius: 6px !important;
           cursor: pointer !important;
-          font-size: 12px !important;
+          font-size: 13px !important;
           flex: 1 !important;
-          margin: 0 4px !important;
+          transition: all 0.2s !important;
         }
-        #widget-buttons button:first-child {
-          margin-left: 0 !important;
-        }
-        #widget-buttons button:last-child {
-          margin-right: 0 !important;
-        }
+        
         #widget-buttons button:hover {
-          background: rgba(58, 128, 210, 0.9) !important;
+          background: rgba(95, 99, 242, 0.2) !important;
+          border-color: rgba(95, 99, 242, 0.4) !important;
         }
+        
         #widget-context-button {
           background: transparent !important;
           border: none !important;
-          color: rgba(74, 144, 226, 0.8) !important;
+          color: rgba(138, 143, 255, 0.8) !important; /* Purple-blue */
           font-size: 12px !important;
-          text-decoration: underline !important;
+          text-decoration: none !important;
           cursor: pointer !important;
-          padding: 0 12px 8px !important;
+          padding: 0 16px 12px !important;
           text-align: center !important;
           display: block !important;
           width: 100% !important;
+          opacity: 0.8 !important;
+          transition: opacity 0.2s !important;
         }
+        
+        #widget-context-button:hover {
+          opacity: 1 !important;
+          text-decoration: underline !important;
+        }
+        
         .widget-resize-handle {
           position: absolute !important;
           bottom: 0 !important;
@@ -193,24 +284,59 @@
           width: 16px !important;
           height: 16px !important;
           cursor: nwse-resize !important;
-          background: rgba(74, 144, 226, 0.5) !important;
-          border-radius: 0 0 8px 0 !important;
+          background: rgba(95, 99, 242, 0.3) !important;
+          border-radius: 0 0 12px 0 !important;
+          transition: background 0.2s !important;
+        }
+        
+        .widget-resize-handle:hover {
+          background: rgba(95, 99, 242, 0.5) !important;
+        }
+        
+        /* Toggle button styling */
+        #lexi-toggle-button {
+          position: fixed !important;
+          bottom: 20px !important;
+          right: 20px !important;
+          width: 48px !important;
+          height: 48px !important;
+          background: rgba(95, 99, 242, 0.85) !important; /* Purple-blue */
+          border-radius: 50% !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          cursor: pointer !important;
+          font-size: 22px !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+          z-index: 2147483646 !important;
+          transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+                      background 0.2s !important;
+          border: none !important;
+          color: white !important;
+        }
+        
+        #lexi-toggle-button:hover {
+          transform: scale(1.1) !important;
+          background: rgba(105, 109, 255, 0.95) !important;
         }
       `;
       document.head.appendChild(style);
     }
     
-    // Create widget element
+    // Create widget element with updated structure
     const widget = document.createElement('div');
     widget.id = 'librarian-widget';
     widget.innerHTML = `
       <div id="widget-header">
-        <strong>Friendly Librarian</strong>
+        <div class="widget-logo">
+          <span class="widget-logo-icon">📚</span>
+          <strong>Lexi</strong>
+        </div>
         <button id="widget-close">✕</button>
       </div>
       <div id="conversation"></div>
-      <input id="user-input" type="text" placeholder="Ask me anything..." />
-      <button id="widget-context-button">Tell me about this page</button>
+      <input id="user-input" type="text" placeholder="Ask Lexi..." />
+      <button id="widget-context-button">About this page</button>
       <div id="widget-buttons">
         <button id="copy-conversation">Copy</button>
         <button id="save-conversation">Save</button>
@@ -223,9 +349,7 @@
     debug("Widget created and appended to body");
     
     return widget;
-  }
-  
-  // --- Widget Setup ---
+  }// --- Widget Setup ---
   function setupWidget(widget) {
     debug("Setting up widget functionality");
     
@@ -303,7 +427,7 @@
     // --- Context Button ---
     widget.querySelector('#widget-context-button').addEventListener('click', function() {
       analyzePageContext();
-      appendMessage('User', 'Tell me about this page');
+      appendMessage('user', 'Tell me about this page');
       processContextRequest();
     });
     
@@ -332,7 +456,7 @@
     
     // Display greeting if conversation is empty
     if (conversationHistory.length === 0) {
-      appendMessage('Librarian', `Hi there! I'm your friendly librarian. I can help you understand content on this page or answer any questions you have. Just highlight text with Ctrl+Shift+X or type your question below.`);
+      appendMessage('lexi', `Hi there! I'm Lexi, your research assistant. Highlight text with Ctrl+Shift+X for a quick explanation, or ask me anything.`);
     }
     
     // Make widget visible with animation
@@ -370,23 +494,20 @@
   
   // --- Process Page Context Request ---
   function processContextRequest() {
-    const contextSummary = `I can see you're on ${currentPageContext.title}. This is ${currentPageContext.domain}${currentPageContext.path}. 
-    
-The page is about ${currentPageContext.description || "a topic I can't quite determine from the metadata"}. 
-
-${currentPageContext.headings && currentPageContext.headings.length > 0 ? 
-  `The main topics appear to be: ${currentPageContext.headings.map(h => h.text).join(", ")}` : 
-  "I don't see any clear headings to determine the main topics."}
-
-Is there something specific about this page you'd like to know?`;
-
+    const contextSummary = getContextSummary();
     const loadingId = showLoading();
     
     // Simulate thinking time for more natural conversation
     setTimeout(() => {
       removeLoading(loadingId);
-      appendMessage('Librarian', contextSummary);
-    }, 1000);
+      appendMessage('lexi', contextSummary);
+    }, 800); // Slightly quicker response
+  }
+  
+  // Generate concise context summary
+  function getContextSummary() {
+    // Create a more concise summary
+    return `You're on ${currentPageContext.domain}${currentPageContext.path}. This page is about ${currentPageContext.description || "a topic I couldn't determine from metadata"}. Need specific info about something?`;
   }
   
   // --- Input Handler ---
@@ -401,7 +522,7 @@ Is there something specific about this page you'd like to know?`;
         if (!query) return;
         
         debug(`Processing user input: ${query}`);
-        appendMessage('User', query);
+        appendMessage('user', query);
         userInput.value = '';
         userInput.disabled = true;
         
@@ -417,8 +538,8 @@ Is there something specific about this page you'd like to know?`;
             debug("Using local response");
             setTimeout(() => {
               removeLoading(loadingId);
-              appendMessage('Librarian', localResponse);
-            }, Math.random() * 800 + 400); // Random delay between 400-1200ms
+              appendMessage('lexi', localResponse);
+            }, Math.random() * 400 + 300); // Random delay between 300-700ms (faster)
           } else if (query.toLowerCase().includes('this page') || 
                     query.toLowerCase().includes('this website') || 
                     query.toLowerCase().includes('this site')) {
@@ -432,19 +553,19 @@ Is there something specific about this page you'd like to know?`;
             removeLoading(loadingId);
             
             if (result.error) {
-              appendMessage('Librarian', `I'm sorry, I ran into a problem: ${result.error}. Would you like to try asking in a different way?`);
+              appendMessage('lexi', `Sorry, I hit a snag: ${result.error}. Mind rephrasing?`);
             } else if (Array.isArray(result) && result[0]?.generated_text) {
-              appendMessage('Librarian', enhanceResponse(result[0].generated_text));
+              appendMessage('lexi', ensureConcise(result[0].generated_text));
             } else if (result.generated_text) {
-              appendMessage('Librarian', enhanceResponse(result.generated_text));
+              appendMessage('lexi', ensureConcise(result.generated_text));
             } else {
-              appendMessage('Librarian', "I understand what you're asking, but I'm having trouble formulating a good response. Could you rephrase your question?");
+              appendMessage('lexi', "I understand your question, but could you rephrase it?");
             }
           }
         } catch (error) {
           debug(`Error processing query: ${error.message}`);
           removeLoading(loadingId);
-          appendMessage('Librarian', `I encountered a technical issue while processing your question: ${error.message || "Unknown error"}. Let's try again, shall we?`);
+          appendMessage('lexi', `Technical issue: ${error.message || "Unknown error"}. Let's try again?`);
         } finally {
           userInput.disabled = false;
           userInput.focus();
@@ -461,7 +582,8 @@ Is there something specific about this page you'd like to know?`;
     if (conversation) {
       const loadingMsg = document.createElement('div');
       loadingMsg.id = id;
-      loadingMsg.innerHTML = '<strong>Librarian:</strong> <em>Looking that up for you...</em>';
+      loadingMsg.className = 'message-lexi'; // Use message styling
+      loadingMsg.innerHTML = '<div class="sender lexi">Lexi</div><div>Thinking...</div>';
       conversation.appendChild(loadingMsg);
       conversation.scrollTop = conversation.scrollHeight;
     }
@@ -476,13 +598,24 @@ Is there something specific about this page you'd like to know?`;
   
   // --- Append Messages ---
   function appendMessage(sender, text) {
+    // Store in history with sender info
     conversationHistory.push({ sender, text });
     
     const conversation = document.getElementById('conversation');
     if (!conversation) return;
     
+    // Create message element with updated styling
     const messageDiv = document.createElement('div');
-    messageDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+    
+    // Add appropriate class based on sender
+    if (sender.toLowerCase() === 'user') {
+      messageDiv.className = 'message-user';
+      messageDiv.innerHTML = `<div class="sender user">You</div><div>${text}</div>`;
+    } else {
+      messageDiv.className = 'message-lexi';
+      messageDiv.innerHTML = `<div class="sender lexi">Lexi</div><div>${text}</div>`;
+    }
+    
     conversation.appendChild(messageDiv);
     
     // Auto-scroll to bottom
@@ -506,41 +639,41 @@ Is there something specific about this page you'd like to know?`;
       test: /^(test|testing)$/
     };
     
-    // More natural responses with slight variations
+    // More concise, focused responses
     const greetingResponses = [
-      "Hello there! How can I help you today?",
-      "Hi! What can I help you with?",
-      "Hey! I'm here to help. What do you need?"
+      "Hey there! What can I help with?",
+      "Hi! Need a definition or explanation?",
+      "Hello! What would you like to know?"
     ];
     
     const howAreYouResponses = [
-      "I'm doing well, thanks for asking! How can I help you today?",
-      "I'm great! Ready to assist with whatever you need.",
-      "Doing well! What can I help you with?"
+      "I'm ready to help! What do you need?",
+      "Ready when you are. What can I explain?",
+      "Ready to assist. What's your question?"
     ];
     
     const thanksResponses = [
-      "You're welcome! Let me know if you need anything else.",
-      "Happy to help! Anything else you'd like to know?",
-      "My pleasure! I'm here if you need more assistance."
+      "You're welcome! Anything else?",
+      "Happy to help! Next question?",
+      "Anytime! What else?"
     ];
     
     const goodbyeResponses = [
-      "Goodbye! Feel free to come back if you have more questions.",
-      "See you later! Just click the bookmarklet whenever you need me again.",
-      "Take care! I'll be here when you need me."
+      "See you later! Click anywhere to bring me back.",
+      "Bye for now! I'll be here when needed.",
+      "Take care! Just click the button when you need me."
     ];
     
     const whoAreYouResponses = [
-      "I'm your friendly librarian assistant. I can help with definitions, explanations, and answering questions about this page or anything else you're curious about.",
-      "I'm your personal librarian assistant! I'm here to help you understand content, find information, or answer any questions you might have.",
-      "Think of me as your personal research assistant. I can help explain concepts, provide definitions, or give you information about this website."
+      "I'm Lexi, your research assistant. I help with definitions and explanations.",
+      "I'm Lexi! I explain highlighted text and answer questions.",
+      "Lexi here - your personal research assistant. I define terms and explain concepts."
     ];
     
     const helpResponses = [
-      "You can ask me for definitions, highlight text with Ctrl+Shift+X, or ask me any questions about this page or other topics. I'm here to assist you!",
-      "I can help in several ways: click 'Tell me about this page' for site info, highlight text and press Ctrl+Shift+X for definitions, or just ask me questions directly.",
-      "Need help? You can highlight text and press Ctrl+Shift+X for definitions, ask me about this website, or ask any other questions you have."
+      "Highlight text + Ctrl+Shift+X for instant definitions. Or just ask me anything!",
+      "Highlight text for explanations, or ask questions about this page or any topic.",
+      "Highlight text or ask questions. Use 'Tell me about this page' to learn about this site."
     ];
     
     // Random response selector
@@ -574,51 +707,47 @@ Is there something specific about this page you'd like to know?`;
     }
     
     if (patterns.test.test(lowerQuery)) {
-      return "I'm working properly! I can help you with information about this page or answer any other questions you might have.";
+      return "All systems go! I'm ready to assist.";
     }
     
     // No matching pattern found
     return null;
   }
   
-  // --- Enhance Response for natural conversation ---
-  function enhanceResponse(text) {
-    if (!text) return "I received your message, but I'm having trouble formulating a response. Could you try asking in a different way?";
+  // --- Ensure Concise Response ---
+  function ensureConcise(text) {
+    if (!text) return "I understand. Could you clarify what you'd like to know?";
     
     // Clean up response first
     let cleaned = cleanResponse(text);
     
-    // Add occasional conversational elements if response is too formal/robotic
-    const randomValue = Math.random();
-    
-    // Add conversational openers (30% chance)
-    if (randomValue < 0.3 && !cleaned.startsWith("I ") && !cleaned.startsWith("That's ") && !cleaned.startsWith("Great ")) {
-      const openers = [
-        "I think ",
-        "From what I understand, ",
-        "Well, ",
-        "Hmm, ",
-        "Let's see... "
-      ];
-      cleaned = openers[Math.floor(Math.random() * openers.length)] + cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
+    // Force brevity - if more than 50 words, trim to 2 sentences
+    const words = cleaned.split(/\s+/);
+    if (words.length > 50) {
+      const sentences = cleaned.match(/[^.!?]+[.!?]+/g) || [];
+      cleaned = sentences.slice(0, 2).join(' ');
     }
     
-    // Add conversational follow-ups (20% chance)
-    if (randomValue >= 0.3 && randomValue < 0.5 && !cleaned.includes("?") && !cleaned.includes("let me know")) {
-      const followUps = [
-        " Does that help?",
-        " Does that make sense?",
-        " Is that what you were looking for?",
-        " Let me know if you need more details.",
-        " I hope that answers your question."
+    // Add random brief openers only occasionally (20% chance)
+    if (Math.random() < 0.2) {
+      const openers = [
+        "Simply put, ",
+        "In brief, ",
+        "Essentially, ",
+        "Basically, "
       ];
-      cleaned += followUps[Math.floor(Math.random() * followUps.length)];
+      
+      if (!cleaned.startsWith(openers[0]) && 
+          !cleaned.startsWith(openers[1]) && 
+          !cleaned.startsWith(openers[2]) && 
+          !cleaned.startsWith(openers[3])) {
+        const opener = openers[Math.floor(Math.random() * openers.length)];
+        cleaned = opener + cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
+      }
     }
     
     return cleaned;
-  }
-  
-  // --- Copy/Save Functionality ---
+  }// --- Copy/Save Functionality ---
   function setupCopySave(widget) {
     // Copy button
     widget.querySelector('#copy-conversation').addEventListener('click', function() {
@@ -627,11 +756,23 @@ Is there something specific about this page you'd like to know?`;
         return;
       }
       
-      const text = conversationHistory.map(msg => `${msg.sender}: ${msg.text}`).join('\n');
+      const text = conversationHistory.map(msg => 
+        `${msg.sender === 'user' ? 'You' : 'Lexi'}: ${msg.text}`
+      ).join('\n\n');
       
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text)
-          .then(() => alert('Conversation copied to clipboard!'))
+          .then(() => {
+            // Show subtle feedback instead of alert
+            const button = widget.querySelector('#copy-conversation');
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            button.style.background = 'rgba(95, 99, 242, 0.5) !important';
+            setTimeout(() => {
+              button.textContent = originalText;
+              button.style.background = '';
+            }, 1500);
+          })
           .catch(err => {
             debug(`Clipboard error: ${err.message}`);
             fallbackCopy(text);
@@ -648,13 +789,17 @@ Is there something specific about this page you'd like to know?`;
         return;
       }
       
-      const text = conversationHistory.map(msg => `${msg.sender}: ${msg.text}`).join('\n');
+      const text = conversationHistory.map(msg => 
+        `${msg.sender === 'user' ? 'You' : 'Lexi'}: ${msg.text}`
+      ).join('\n\n');
+      
+      const filename = `lexi-conversation-${new Date().toISOString().slice(0, 10)}.txt`;
       const blob = new Blob([text], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       
       const a = document.createElement('a');
       a.href = url;
-      a.download = `slimscreen-conversation-${new Date().toISOString().slice(0, 10)}.txt`;
+      a.download = filename;
       a.style.display = 'none';
       
       document.body.appendChild(a);
@@ -663,6 +808,16 @@ Is there something specific about this page you'd like to know?`;
       setTimeout(() => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        
+        // Show subtle feedback
+        const button = widget.querySelector('#save-conversation');
+        const originalText = button.textContent;
+        button.textContent = 'Saved!';
+        button.style.background = 'rgba(95, 99, 242, 0.5) !important';
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.background = '';
+        }, 1500);
       }, 100);
     });
     
@@ -679,7 +834,13 @@ Is there something specific about this page you'd like to know?`;
       try {
         const success = document.execCommand('copy');
         if (success) {
-          alert('Conversation copied to clipboard!');
+          // Show subtle feedback
+          const button = widget.querySelector('#copy-conversation');
+          const originalText = button.textContent;
+          button.textContent = 'Copied!';
+          setTimeout(() => {
+            button.textContent = originalText;
+          }, 1500);
         } else {
           alert('Unable to copy. Your browser may not support this feature.');
         }
@@ -718,7 +879,7 @@ Is there something specific about this page you'd like to know?`;
       
       // Set up request with timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // Shorter timeout (10s)
       
       const response = await fetch(baseUrl, {
         method: 'POST',
@@ -747,36 +908,40 @@ Is there something specific about this page you'd like to know?`;
     } catch (error) {
       debug(`API error: ${error.message}`);
       
-      // Handle specific errors
+      // Handle specific errors with more concise messaging
       if (error.name === 'AbortError') {
         return { 
-          generated_text: "I'm sorry for the delay. The server is taking longer than expected to respond. Would you like to try asking something else?"
+          generated_text: "Sorry for the delay. Try a simpler question?"
         };
       }
       
       if (!navigator.onLine) {
         return { 
-          generated_text: "It looks like you're offline right now. Once your connection is restored, I'll be able to help you."
+          generated_text: "You're offline. Please check your connection."
         };
       }
       
       // Default error response
       return { 
-        generated_text: `I encountered a problem: ${error.message}. Let's try a different approach.`
+        generated_text: `Problem: ${error.message}. Let's try differently.`
       };
     }
   }
   
   // --- Clean Response ---
   function cleanResponse(text) {
-    if (!text) return "I received your message, but I'm not sure how to respond to that.";
+    if (!text) return "I understand. Could you clarify what you'd like to know?";
     
     // Remove system prompts, tags, and instructions
     const patterns = [
       /<system>[\s\S]*?<\/system>/gi,
       /<user>[\s\S]*?<\/user>/gi,
       /<assistant>\s*/gi,
-      /You are a (friendly|helpful) librarian[^.]*/gi,
+      /You are (a )?(friendly|helpful) librarian[^.]*/gi,
+      /You are Lexi[^.]*/gi,
+      /Provide a concise[^.]*/gi,
+      /Focus only on[^.]*/gi, 
+      /Be warm but efficient[^.]*/gi,
       /Keep your responses brief and helpful[^.]*/gi,
       /Your tone is kind and approachable[^.]*/gi,
       /\[Context: User is on[^\]]*\]/gi
@@ -799,7 +964,8 @@ Is there something specific about this page you'd like to know?`;
       /Result = [^;]*;/g,
       /DONT forget about receipts/g,
       /Urban journals\./g,
-      /I'm here to help with that\. Could you provide more context\?/g
+      /I'm here to help with that\. Could you provide more context\?/g,
+      /I'll help you understand this\./g
     ];
     
     strangePatterns.forEach(pattern => {
@@ -822,7 +988,7 @@ Is there something specific about this page you'd like to know?`;
     
     // Fallback if we've removed too much
     if (!cleaned || cleaned.length < 5) {
-      cleaned = "I understand what you're asking about. Can you tell me a bit more about what you'd like to know?";
+      cleaned = "I understand. Can you tell me what you'd like to know specifically?";
     }
     
     return cleaned;
@@ -846,14 +1012,14 @@ Is there something specific about this page you'd like to know?`;
           const selectedText = window.getSelection().toString().trim();
           if (selectedText) {
             debug(`Selected text detected: ${selectedText.substring(0, 30)}...`);
-            appendMessage('User', `Help me understand: "${selectedText}"`);
+            appendMessage('user', `What does this mean: "${selectedText}"`);
             
             // Process the selected text
             const loadingId = showLoading();
             
             try {
-              // Enhance prompt with page context
-              let enhancedPrompt = `Please explain this text concisely: "${selectedText}"`;
+              // Enhance prompt with page context for more relevance
+              let enhancedPrompt = `Define this concisely (max 2 sentences): "${selectedText}"`;
               if (currentPageContext && currentPageContext.title) {
                 enhancedPrompt = `[Context: User is on ${currentPageContext.domain}, page titled "${currentPageContext.title}"] ${enhancedPrompt}`;
               }
@@ -861,17 +1027,17 @@ Is there something specific about this page you'd like to know?`;
               const result = await runInference(enhancedPrompt);
               
               if (result.error) {
-                appendMessage('Librarian', `I'm sorry, I ran into a problem analyzing that text: ${result.error}. Could you try selecting a different section or asking a specific question about it?`);
+                appendMessage('lexi', `Sorry, I had trouble with that text. Can you ask about a specific part?`);
               } else if (Array.isArray(result) && result[0]?.generated_text) {
-                appendMessage('Librarian', enhanceResponse(result[0].generated_text));
+                appendMessage('lexi', ensureConcise(result[0].generated_text));
               } else if (result.generated_text) {
-                appendMessage('Librarian', enhanceResponse(result.generated_text));
+                appendMessage('lexi', ensureConcise(result.generated_text));
               } else {
-                appendMessage('Librarian', "I can see you've selected some text, but I'm having trouble understanding it. Could you ask a specific question about what you'd like to know?");
+                appendMessage('lexi', "I see you've selected text. What would you like to know about it?");
               }
             } catch (error) {
               debug(`Error processing selected text: ${error.message}`);
-              appendMessage('Librarian', `I had trouble analyzing that selection: ${error.message || "Unknown error"}. Would you like to try a different approach?`);
+              appendMessage('lexi', `Trouble analyzing that selection. Try selecting a shorter passage?`);
             } finally {
               removeLoading(loadingId);
               
@@ -901,18 +1067,21 @@ Is there something specific about this page you'd like to know?`;
       
       // Add our custom menu item
       const menuItem = document.createElement('div');
-      menuItem.textContent = 'Ask Librarian';
+      menuItem.textContent = 'Ask Lexi';
       menuItem.style.cssText = `
         position: absolute;
         top: ${e.pageY}px;
         left: ${e.pageX}px;
-        background: white;
-        border: 1px solid #ccc;
-        padding: 5px 10px;
+        background: rgba(22, 25, 37, 0.9);
+        color: white;
+        border: 1px solid rgba(95, 99, 242, 0.4);
+        padding: 6px 12px;
         cursor: pointer;
         z-index: 10000;
-        border-radius: 4px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
       `;
       
       document.body.appendChild(menuItem);
@@ -924,24 +1093,24 @@ Is there something specific about this page you'd like to know?`;
         
         // Show widget and process text
         showWidget();
-        appendMessage('User', `Help me understand: "${selectedText}"`);
+        appendMessage('user', `What does this mean: "${selectedText}"`);
         
         // Process the selected text
         const loadingId = showLoading();
         
-        runInference(`Please explain this text concisely: "${selectedText}"`)
+        runInference(`Define this concisely (max 2 sentences): "${selectedText}"`)
           .then(result => {
             removeLoading(loadingId);
             if (result.generated_text) {
-              appendMessage('Librarian', enhanceResponse(result.generated_text));
+              appendMessage('lexi', ensureConcise(result.generated_text));
             } else {
-              appendMessage('Librarian', "I can see you've selected some text, but I'm having trouble understanding it. Could you ask a specific question about what you'd like to know?");
+              appendMessage('lexi', "I see you've selected some text. What would you like to know about it?");
             }
           })
           .catch(error => {
             removeLoading(loadingId);
             debug(`Error processing selected text: ${error.message}`);
-            appendMessage('Librarian', `I had trouble analyzing that selection: ${error.message || "Unknown error"}. Would you like to try a different approach?`);
+            appendMessage('lexi', `I had trouble with that text. Can you ask specifically what you want to know?`);
           });
       });
       
@@ -978,7 +1147,7 @@ Is there something specific about this page you'd like to know?`;
         
         // If widget is visible, notify about page change
         if (widgetVisible) {
-          appendMessage('Librarian', `I notice you've navigated to a new page: ${document.title}. Let me know if you have any questions about this content.`);
+          appendMessage('lexi', `You've navigated to ${document.title}. Need help with anything here?`);
         }
       }
     }, 1000);
@@ -998,9 +1167,6 @@ Is there something specific about this page you'd like to know?`;
     // Add fixed toggle button
     addFixedToggleButton();
     
-    // Show widget initially (optional, can be commented out)
-    // showWidget();
-    
     debug("SlimScreen initialized successfully");
   }
   
@@ -1008,35 +1174,16 @@ Is there something specific about this page you'd like to know?`;
   function addFixedToggleButton() {
     debug("Adding fixed toggle button");
     
+    // Remove any existing button
+    const existingButton = document.getElementById('lexi-toggle-button');
+    if (existingButton) {
+      existingButton.remove();
+    }
+    
     const button = document.createElement('div');
+    button.id = 'lexi-toggle-button';
     button.innerHTML = '📚';
-    button.title = 'Toggle Librarian (Ctrl+Shift+X)';
-    button.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 40px;
-      height: 40px;
-      background: rgba(74, 144, 226, 0.9);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      z-index: 2147483646;
-      transition: transform 0.3s ease;
-    `;
-    
-    // Hover effect
-    button.addEventListener('mouseover', () => {
-      button.style.transform = 'scale(1.1)';
-    });
-    
-    button.addEventListener('mouseout', () => {
-      button.style.transform = 'scale(1)';
-    });
+    button.title = 'Toggle Lexi (Ctrl+Shift+X)';
     
     // Click handler
     button.addEventListener('click', () => {
@@ -1048,55 +1195,6 @@ Is there something specific about this page you'd like to know?`;
     debug("Fixed toggle button added");
   }
   
-  // --- Enhanced Context Awareness ---
-  function enhancePageContext() {
-    debug("Enhancing page context analysis");
-    
-    // Add more context from the page content
-    try {
-      // Get more text content
-      const mainContent = document.querySelector('main') || document.querySelector('article') || document.body;
-      const paragraphs = mainContent.querySelectorAll('p');
-      
-      // Extract some paragraph text (limited to first 5 paragraphs)
-      let contentSample = [];
-      for (let i = 0; i < Math.min(paragraphs.length, 5); i++) {
-        const text = paragraphs[i].textContent.trim();
-        if (text.length > 20) { // Only include substantial paragraphs
-          contentSample.push(text);
-        }
-      }
-      
-      // Get images with alt text
-      const images = document.querySelectorAll('img[alt]');
-      const imageData = [];
-      
-      for (let i = 0; i < Math.min(images.length, 3); i++) {
-        const alt = images[i].alt.trim();
-        if (alt && alt.length > 3 && alt !== 'logo') {
-          imageData.push(alt);
-        }
-      }
-      
-      // Enhance the current context
-      currentPageContext.contentSample = contentSample;
-      currentPageContext.imageDescriptions = imageData;
-      
-      // Check if page has forms
-      currentPageContext.hasForms = document.querySelectorAll('form').length > 0;
-      
-      // Look for key sections
-      currentPageContext.hasCommentsSection = 
-        !!document.querySelector('.comments') || 
-        !!document.querySelector('#comments') ||
-        !!document.querySelector('[data-testid="comments"]');
-      
-      debug("Enhanced page context successfully");
-    } catch (error) {
-      debug(`Error enhancing page context: ${error.message}`);
-    }
-  }
-  
   // Call initialization when DOM is fully loaded
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);
@@ -1105,6 +1203,7 @@ Is there something specific about this page you'd like to know?`;
   }
   
   // Make toggle function available globally for bookmarklet
-  window.toggleSlimScreen = toggleWidget;
+  window.slimScreenToggle = toggleWidget;
+  window.slimScreenLoaded = true;
   
 })();
