@@ -1,6 +1,3 @@
-// Simplified serverless function for SlimScreen's Lexi assistant
-// This can be deployed as an API route on Vercel, Netlify, or other serverless platforms
-
 const fetch = require('node-fetch');
 const AbortController = require('abort-controller');
 
@@ -15,11 +12,6 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  // Validate request
-  if (!req.body || !req.body.inputs) {
-    return res.status(400).json({ error: "Missing required 'inputs' field" });
-  }
-  
   const apiUrl = 'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium';
   const token = process.env.HUGGINGFACE_TOKEN;
   
@@ -28,27 +20,52 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: "API token not configured" });
   }
 
-  // Format the prompt for Lexi's personality
+  if (!req.body || !req.body.inputs) {
+    console.error("Missing required 'inputs' field in request body");
+    return res.status(400).json({ error: "Missing required 'inputs' field" });
+  }
+
+  // Format the prompt for Lexi
   const userInput = req.body.inputs.trim();
   
-  // More specific and concise prompt for Lexi
-  const formattedPrompt = `You are Lexi, a helpful research assistant providing concise information. 
-  Give a clear, brief explanation (1-2 sentences max) for: "${userInput}"`;
+  // Check if this is a definition request
+  const isDefinitionRequest = userInput.toLowerCase().includes("what does this mean") || 
+                             userInput.toLowerCase().includes("define") ||
+                             userInput.toLowerCase().includes("meaning of");
+  
+  // Different prompt templates based on request type
+  let formattedPrompt;
+  
+  if (isDefinitionRequest) {
+    // Extract the term being defined (if possible)
+    const termMatch = userInput.match(/(?:what does this mean|define|meaning of)[: ]+"([^"]+)"/i);
+    const term = termMatch ? termMatch[1] : "";
+    
+    formattedPrompt = `You are Lexi, a helpful research assistant. 
+    Provide a clear, concise definition (1-2 sentences) for this term: "${term}"
+    Be straightforward and precise in your explanation.`;
+  } else {
+    // General conversation prompt
+    formattedPrompt = `You are Lexi, a helpful research assistant providing concise information. 
+    Reply to this in a natural, concise way (1-2 sentences): "${userInput}"`;
+  }
   
   const payload = {
     inputs: formattedPrompt,
     parameters: {
-      max_length: 75,      // Shorter responses for conciseness
-      temperature: 0.6,     // Less randomness for more consistent answers
+      max_length: 100,      // Limit response length
+      temperature: 0.6,     // Add some randomness but not too much
       top_k: 40,            // Consider top 40 tokens
       top_p: 0.9,           // Use nucleus sampling
       do_sample: true       // Enable sampling
     }
   };
 
+  console.log("Processing request with prompt:", formattedPrompt);
+
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000); // 8-second timeout
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -61,16 +78,21 @@ module.exports = async (req, res) => {
     });
 
     clearTimeout(timeout);
+    console.log("Hugging Face response status:", response.status);
 
     if (response.status === 503) {
-      return res.status(503).json({ 
-        error: "Service temporarily unavailable. Try again shortly." 
+      console.error("Model endpoint returned 503 - Service Unavailable");
+      return res.status(200).json({ 
+        generated_text: "I'm currently processing many requests. Could you try again in a moment?" 
       });
     }
 
     if (!response.ok) {
-      return res.status(response.status).json({ 
-        error: `API error: ${response.statusText}` 
+      console.error(`API error: ${response.status} ${response.statusText}`);
+      const responseText = await response.text();
+      console.error("Response body:", responseText);
+      return res.status(200).json({ 
+        generated_text: "I understand your question, but I'm having trouble accessing my knowledge. Can you rephrase or try again?" 
       });
     }
 
@@ -79,7 +101,7 @@ module.exports = async (req, res) => {
       const text = await response.text();
       data = JSON.parse(text);
       
-      // Apply post-processing for conciseness
+      // Apply post-processing here on the server side to ensure clean responses
       if (data.generated_text) {
         data.generated_text = cleanResponse(data.generated_text);
       } else if (Array.isArray(data) && data[0]?.generated_text) {
@@ -87,72 +109,85 @@ module.exports = async (req, res) => {
       }
       
     } catch (jsonError) {
-      return res.status(500).json({ error: "Invalid response received" });
+      console.error("Invalid JSON received:", jsonError);
+      return res.status(500).json({ error: "Invalid response received from Hugging Face" });
     }
 
     return res.status(200).json(data);
   } catch (error) {
+    console.error("Proxy error:", error);
     const errorMessage = error.name === 'AbortError' 
-      ? "Request timed out" 
+      ? "Request processing took too long. Could you try a simpler question?" 
       : error.message;
-    return res.status(500).json({ error: errorMessage });
+    return res.status(200).json({ 
+      generated_text: "I understand your question, but I'm having technical difficulties. Please try again in a moment."
+    });
   }
 };
 
-// Improved response cleaner for conciseness
+// Improved response cleaner
 function cleanResponse(text) {
-  if (!text) return "I understand. Could you clarify what you'd like to know?";
+  if (!text) return "I understand your question, but need more specific context.";
   
   // Remove prompt remnants and system instructions
   const cleaningPatterns = [
-    /You are Lexi[^"]*: "([^"]*)"/i,
-    /<system>[\s\S]*?<\/system>/i,
-    /<user>[\s\S]*?<\/user>/i,
-    /<assistant>[\s\S]*?/i,
-    /Give a clear, brief explanation[^.]*\./i,
-    /You are a helpful research assistant[^.]*\./i
+    // Remove prompt structures
+    /You are Lexi[^"]*"([^"]*)"/i,
+    /Define this concisely[^:]*:/i,
+    /\[\s*Context:[^\]]*\]/gi,
+    /Provide a clear, concise definition[^.]*\./i,
+    /Be straightforward and precise[^.]*\./i,
+    
+    // Remove system and XML tags
+    /<s>[\s\S]*?<\/system>/gi,
+    /<user>[\s\S]*?<\/user>/gi,
+    /<assistant>[\s\S]*?<\/assistant>/gi,
+    /<assistant>\s*/gi,
+    
+    // Remove instruction patterns
+    /You are (a )?(friendly|helpful) (librarian|research assistant)[^.]*/gi,
+    /Reply to this in a natural, concise way[^.]*\./gi,
+    /Provide a concise[^.]*\./gi,
+    /Focus only on[^.]*\./gi, 
+    /Be warm but efficient[^.]*\./gi,
+    
+    // Remove reference artifacts
+    /Wikipedia, the free encyclopedia"?\]/gi,
+    /Define this concisely \(max \d+ sentences\):/gi,
+    /Give a clear, brief explanation[^.]*/gi,
   ];
   
   let cleaned = text;
   
-  // Apply cleaning patterns
+  // Apply all cleaning patterns
   cleaningPatterns.forEach(pattern => {
     cleaned = cleaned.replace(pattern, '');
   });
   
-  // Remove known bad responses
-  const badResponses = [
-    "I'll help you understand this.",
-    "Let me explain this for you.",
-    "It is not my face, but a face that bothers me",
-    "To a space, a space adjacent to hello",
-    "For the past 14 years",
-    "Your book's digital RSS feed"
+  // Remove strange artifacts and phrases
+  const strangePatterns = [
+    /It is not my face, but a face that bothers me\./g,
+    /To a space, a space adjacent to hello\./g,
+    /For the past 14 years\./g,
+    /Your book's digital RSS feed\./g,
+    /FANT[A-Za-z]+::[^;]*;/g,
+    /Result = [^;]*;/g,
+    /DONT forget about receipts/g,
+    /Urban journals\./g,
+    /I'm here to help with that\. Could you provide more context\?/g,
+    /I'll help you understand this\./g,
+    /According to Wikipedia/gi,
+    /Let me find information about/gi
   ];
   
-  for (const badResponse of badResponses) {
-    if (cleaned.includes(badResponse)) {
-      if (badResponse.includes("help you understand")) {
-        return "Here's a simple explanation:";
-      }
-      if (badResponse.includes("explain this for you")) {
-        return "Simply put:";
-      }
-      // For other strange responses, provide reasonable defaults
-      return "I understand your question. Here's what you need to know:";
-    }
-  }
+  strangePatterns.forEach(pattern => {
+    cleaned = cleaned.replace(pattern, '');
+  });
   
   // Clean whitespace and normalize
   cleaned = cleaned.trim().replace(/\s+/g, ' ');
   
-  // Force brevity - limit to two sentences for consistency
-  const sentences = cleaned.match(/[^.!?]+[.!?]+/g) || [];
-  if (sentences.length > 2) {
-    cleaned = sentences.slice(0, 2).join(' ');
-  }
-  
-  // Ensure the response is well-formed
+  // Ensure proper formatting
   if (cleaned && cleaned.length > 0) {
     // Capitalize first letter
     cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
@@ -163,9 +198,9 @@ function cleanResponse(text) {
     }
   }
   
-  // Fallback for empty or too-short responses
+  // Fallback if we've removed too much
   if (!cleaned || cleaned.length < 5) {
-    return "This refers to a concept I'll need to explore more with you. Could you provide additional context?";
+    return "This refers to a concept that requires specific context. Could you provide more details?";
   }
   
   return cleaned;
