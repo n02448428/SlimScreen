@@ -5,7 +5,9 @@
   let currentPageContext = {};
   
   function debug(message) {
-    console.log(`[Lexi] ${message}`);
+    if (window.debugMode) {
+      console.log(`[SlimScreen] ${message}`);
+    }
   }
   
   function analyzePageContext() {
