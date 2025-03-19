@@ -335,59 +335,98 @@
     });
   }
   
-  function classifyQuery(query) {
+  // NEW INTENT CLASSIFICATION SYSTEM
+  async function classifyIntent(query) {
+    // Clean the query
     const cleanQuery = query.toLowerCase().trim();
     
-    if (/^(go on|keep going|continue|tell me more)$/i.test(cleanQuery)) {
-      return { type: 'conversation_continuation', query: cleanQuery };
+    // Check for common conversational expressions
+    const conversationalPatterns = {
+      // Common expressions
+      "^(omg|wow|lol|lmao|rofl|haha|hahaha)$": "conversational",
+      "^(get out|get outta here|no way|seriously|really|for real)": "conversational_reaction",
+      "^(r u|are you) (sure|kidding|joking|serious)": "conversational_question",
+      
+      // Basic questions about Lexi
+      "^(who|what) are you": "self_intro",
+      "^tell me about yourself": "self_intro",
+      "^what can you do": "capabilities",
+      
+      // Gratitude and pleasantries
+      "^(thanks|thank you|thx|ty)": "gratitude",
+      "^(good job|well done|nice work)": "acknowledgment",
+      
+      // Greetings and farewells
+      "^(hi|hello|hey|greetings|yo)": "greeting",
+      "^(bye|goodbye|see you|farewell|ttyl|cya)": "farewell"
+    };
+    
+    // Check against patterns
+    for (const [pattern, intent] of Object.entries(conversationalPatterns)) {
+      if (new RegExp(pattern, "i").test(cleanQuery)) {
+        return { type: intent, query: cleanQuery };
+      }
     }
     
-    if (/^(i(?:'m| am) not sure|i don'?t understand|what do you mean|can you clarify|that doesn'?t make sense|i(?:'m| am) confused)/i.test(cleanQuery)) {
-      return { type: 'clarification_request', query: cleanQuery };
+    // Check if it's a definition request
+    if (cleanQuery.match(/^what does ["']?([^"'?]+)["']? mean\??$/i) || 
+        cleanQuery.match(/^what (is|are) ["']?([^"'?]+)["']?\??$/i) ||
+        cleanQuery.match(/^define ["']?([^"'?]+)["']?$/i) ||
+        cleanQuery.match(/^meaning of ["']?([^"'?]+)["']?$/i)) {
+      
+      // Extract the term to define
+      const term = extractTermToDefine(cleanQuery);
+      return { type: "definition_request", term };
     }
     
-    if (/^(hi|hello|hey|greetings|hi lexi|hello lexi|hey lexi)/i.test(cleanQuery)) {
-      return { type: 'greeting', query: cleanQuery };
+    // Check if it could be a direct term to look up (single word or short phrase)
+    if (cleanQuery.split(/\s+/).length <= 3 && !cleanQuery.match(/^(what|who|how|why|when|where|do|can|will|should)/i)) {
+      return { type: "potential_term", term: cleanQuery };
     }
     
-    if (/^(bye|goodbye|see you|farewell|exit)/i.test(cleanQuery)) {
-      return { type: 'farewell', query: cleanQuery };
-    }
-    
-    if (/^(thanks|thank you|ty|thx)/i.test(cleanQuery)) {
-      return { type: 'gratitude', query: cleanQuery };
-    }
-    
-    if (/^(who are you|what are you|tell me about yourself|what can you do)/i.test(cleanQuery)) {
-      return { type: 'self_introduction', query: cleanQuery };
-    }
-    
-    // Extract term from "what does X mean"
-    const meanMatch = cleanQuery.match(/^what does\s+["']?([^"'?]+)["']?\s+mean\??$/i);
-    if (meanMatch && meanMatch[1]) {
-      return { type: 'definition', term: meanMatch[1].trim() };
-    }
-    
-    // Extract term from "what is X"
-    const isMatch = cleanQuery.match(/^what\s+(?:is|are)\s+["']?([^"'?]+)["']?\??$/i);
-    if (isMatch && isMatch[1]) {
-      return { type: 'definition', term: isMatch[1].trim() };
-    }
-    
-    // Extract term from definition requests
-    const defMatch = cleanQuery.match(/^(?:what|who|define|meaning|definition|explain).*?(?:is|are|does|mean|means|of|by|for)*?\s+["']?([^"'?]+)["']?\??$/i);
-    if (defMatch && defMatch[1]) {
-      return { type: 'definition', term: defMatch[1].trim() };
-    }
-    
-    // If it's very short, try to define it directly
-    if (cleanQuery.split(/\s+/).length === 1 && cleanQuery.length > 2) {
-      return { type: 'definition', term: cleanQuery };
-    }
-    
-    return { type: 'general_query', query: cleanQuery };
+    // Default to general query
+    return { type: "general_query", query: cleanQuery };
   }
   
+  // Extract term to define from various query patterns
+  function extractTermToDefine(query) {
+    const cleanQuery = query.toLowerCase().trim();
+    
+    // "What does X mean?"
+    const meanMatch = cleanQuery.match(/^what does\s+["']?([^"'?]+)["']?\s+mean\??$/i);
+    if (meanMatch && meanMatch[1]) {
+      return meanMatch[1].trim();
+    }
+    
+    // "What is/are X?"
+    const isMatch = cleanQuery.match(/^what\s+(?:is|are)\s+["']?([^"'?]+)["']?\??$/i);
+    if (isMatch && isMatch[1]) {
+      return isMatch[1].trim();
+    }
+    
+    // "Define X"
+    const defineMatch = cleanQuery.match(/^define\s+["']?([^"'?]+)["']?$/i);
+    if (defineMatch && defineMatch[1]) {
+      return defineMatch[1].trim();
+    }
+    
+    // "Meaning of X"
+    const meaningMatch = cleanQuery.match(/^meaning of\s+["']?([^"'?]+)["']?$/i);
+    if (meaningMatch && meaningMatch[1]) {
+      return meaningMatch[1].trim();
+    }
+    
+    // Extract anything in quotes as a fallback
+    const quoteMatch = cleanQuery.match(/["']([^"']+)["']/);
+    if (quoteMatch && quoteMatch[1]) {
+      return quoteMatch[1].trim();
+    }
+    
+    // If all else fails, just return the query without common question words
+    return cleanQuery.replace(/^(what|who|how|why|when|where|is|are|does|do|can|will|would|should|could|define|meaning of)\s+/i, '');
+  }
+  
+  // Process the user query
   async function processQuery(query) {
     try {
       if (responseCache[query.toLowerCase()]) {
@@ -396,135 +435,78 @@
         return;
       }
 
-      const classification = classifyQuery(query);
+      // First, classify the intent
+      const intent = await classifyIntent(query);
       
+      // Add to conversation history
       conversationHistory.push({
         role: 'user',
         content: query
       });
       
+      // Trim history if needed
       if (conversationHistory.length > MAX_HISTORY * 2) {
         conversationHistory.splice(0, 2);
       }
       
+      // Generate response based on intent
       let response;
       
-      switch (classification.type) {
-        case 'greeting':
-          const greetings = [
-            "Hello! How can I help you today?",
-            "Hi there! I'm ready to assist with definitions or explanations.",
-            "Hey! What would you like me to look up for you?"
-          ];
-          response = greetings[Math.floor(Math.random() * greetings.length)];
+      switch (intent.type) {
+        case "greeting":
+          response = getRandomGreeting();
           break;
           
-        case 'farewell':
-          const farewells = [
-            "Goodbye! Feel free to come back anytime you need assistance.",
-            "See you later! Just click the bookmarklet when you need me again.",
-            "Take care! I'll be here when you need definitions."
-          ];
-          response = farewells[Math.floor(Math.random() * farewells.length)];
+        case "farewell":
+          response = getRandomFarewell();
           break;
           
-        case 'gratitude':
-          const gratitude = [
-            "You're welcome! Happy to help.",
-            "Anytime! Let me know if you need anything else.",
-            "My pleasure! Feel free to ask if you have more questions."
-          ];
-          response = gratitude[Math.floor(Math.random() * gratitude.length)];
+        case "gratitude":
+          response = getRandomGratitudeResponse();
           break;
           
-        case 'self_introduction':
+        case "acknowledgment":
+          response = getRandomAcknowledgmentResponse();
+          break;
+          
+        case "self_intro":
           response = "I'm Lexi, your personal librarian assistant! I help with definitions and explanations. Just highlight text and press Ctrl+Shift+X for quick definitions, or type any question to learn about a word or concept.";
           break;
           
-        case 'conversation_continuation':
-          if (conversationHistory.length < 2) {
-            response = "I don't have any additional information on that topic. Could you ask a specific question?";
-          } else {
-            const lastAssistantResponse = findLastAssistantResponse();
-            if (!lastAssistantResponse) {
-              response = "I'm not sure what to elaborate on. Could you ask a specific question?";
-            } else if (lastAssistantResponse.indexOf(":") > 0 && lastAssistantResponse.indexOf(":") < 30) {
-              response = "That covers the basic definition. If you'd like to know more about a specific aspect, please ask directly.";
-            } else {
-              response = "That's all the information I have on this topic. If you have a specific question or would like to know about something else, please let me know.";
-            }
-          }
+        case "capabilities":
+          response = "I can define words, explain concepts, and answer questions about various topics. Just ask me 'What does X mean?' or highlight text and press Ctrl+Shift+X for a quick definition.";
           break;
           
-        case 'clarification_request':
-          const lastAssistantResponse = findLastAssistantResponse();
-          if (!lastAssistantResponse) {
-            response = "What would you like me to clarify? Please ask a specific question.";
-          } else if (lastAssistantResponse.indexOf(":") > 0 && lastAssistantResponse.indexOf(":") < 30) {
-            const term = lastAssistantResponse.split(":")[0].trim();
-            response = `Let me try to explain "${term}" differently: it refers to a concept or term that might be better understood with a specific example or in a particular context. What aspect would you like me to clarify?`;
-          } else {
-            response = "I apologize if my previous explanation wasn't clear. Could you tell me which part you'd like me to explain differently?";
-          }
+        case "conversational":
+        case "conversational_reaction":
+        case "conversational_question":
+          response = handleConversationalInput(intent.query);
           break;
           
-        case 'definition':
-          response = await lookupDefinition(classification.term);
+        case "definition_request":
+          response = await lookupDefinition(intent.term);
           break;
           
-        case 'general_query':
+        case "potential_term":
+          response = await lookupDefinition(intent.term);
+          break;
+          
+        case "general_query":
         default:
-          const words = query.split(/\s+/);
-          let foundDefn = false;
-          
-          // First try a direct lookup if the query is short
-          if (words.length <= 3) {
-            try {
-              const wikiResult = await fetchWikipediaInfo(query);
-              if (wikiResult) {
-                response = wikiResult;
-                foundDefn = true;
-              }
-            } catch (e) {}
-          }
-          
-          // If that fails, try with parts of the query
-          if (!foundDefn) {
-            for (let windowSize = 3; windowSize >= 1; windowSize--) {
-              for (let i = 0; i <= words.length - windowSize; i++) {
-                const term = words.slice(i, i + windowSize).join(' ');
-                try {
-                  const wikiResult = await fetchWikipediaInfo(term);
-                  if (wikiResult) {
-                    response = wikiResult;
-                    foundDefn = true;
-                    break;
-                  }
-                } catch (e) {}
-              }
-              if (foundDefn) break;
-            }
-          }
-          
-          if (!foundDefn) {
-            const templates = [
-              "That's an interesting topic. While I don't have specific information on that, I'd be happy to help if you have any definition questions.",
-              "I'm not sure I have the right information to answer that properly. Is there a specific term you'd like me to define?",
-              "I don't have enough context to provide a good answer. Could you rephrase your question or ask about a specific word or concept?",
-              "I'm better at providing definitions than answering general questions. Is there a particular term you'd like to understand better?",
-              "I'm designed primarily for definitions and explanations. Could you ask in a way that focuses on understanding a specific term or concept?"
-            ];
-            response = templates[Math.floor(Math.random() * templates.length)];
-          }
+          response = await handleGeneralQuery(intent.query);
           break;
       }
       
+      // Add response to history
       conversationHistory.push({
         role: 'assistant',
         content: response
       });
       
+      // Cache the response
       responseCache[query.toLowerCase()] = response;
+      
+      // Display the response
       document.getElementById('lexi-loader').style.display = 'none';
       addMsg('lexi', response);
       
@@ -535,6 +517,7 @@
     }
   }
   
+  // Get the last assistant response from conversation history
   function findLastAssistantResponse() {
     for (let i = conversationHistory.length - 1; i >= 0; i--) {
       if (conversationHistory[i].role === 'assistant') {
@@ -544,11 +527,47 @@
     return null;
   }
   
+  // Handle conversational inputs
+  function handleConversationalInput(query) {
+    const cleanQuery = query.toLowerCase().trim();
+    
+    // Common slang expressions
+    const slangResponses = {
+      "omg": ["Oh my gosh indeed!", "I know, right?", "Surprised? Me too!"],
+      "wow": ["Pretty impressive, isn't it?", "I know, it's fascinating!", "Amazing, right?"],
+      "lol": ["Glad you found that amusing!", "That was funny, wasn't it?", "😊 I try to keep things light."],
+      "lmao": ["That got a good laugh, huh?", "I'm glad you found that entertaining!", "Humor is important!"],
+      "haha": ["I'm glad that was amusing!", "Happy to bring a smile to your day!", "Laughter is the best medicine!"],
+      "get out": ["I'm serious!", "No, really!", "It's true though!"],
+      "get outta here": ["I'm not kidding!", "It's true, I promise!", "Believe it or not!"],
+      "no way": ["Yes way!", "It's true!", "Believe it!"],
+      "seriously": ["Absolutely!", "I'm quite serious!", "Indeed!"],
+      "really": ["Yes, really!", "Absolutely!", "That's correct!"],
+      "r u sure": ["Yes, I'm quite certain.", "I'm confident about that.", "Pretty sure, yes."],
+      "are you sure": ["I'm positive.", "Yes, I've double-checked that.", "I'm confident in that information."]
+    };
+    
+    // Check for matching expressions
+    for (const [phrase, responses] of Object.entries(slangResponses)) {
+      if (cleanQuery.includes(phrase)) {
+        return getRandomItem(responses);
+      }
+    }
+    
+    // For other conversational inputs
+    return "I'm here to help with definitions and answer questions. What would you like to know about?";
+  }
+  
+  // Look up definitions using multiple sources
   async function lookupDefinition(term) {
-    // Normalize the term
+    // Normalize term
     term = term.trim().replace(/^(the|a|an) /i, '');
     
-    // Try exact dictionary lookup for single words
+    // 1. First check our built-in slang dictionary
+    const slangDefinition = checkSlangDictionary(term);
+    if (slangDefinition) return slangDefinition;
+    
+    // 2. Then try online dictionary for single words
     if (term.split(/\s+/).length === 1) {
       try {
         const dictResult = await fetchDictionaryDefinition(term);
@@ -558,7 +577,7 @@
       }
     }
     
-    // Try Wikipedia for phrases or for single words when dictionary fails
+    // 3. Try Wikipedia for concepts, names, etc.
     try {
       const wikiResult = await fetchWikipediaInfo(term);
       if (wikiResult) return wikiResult;
@@ -566,19 +585,148 @@
       console.error("Wikipedia API error:", e);
     }
     
-    // Generate a response about the lack of definition
+    // 4. For compound terms, try breaking them down
+    if (term.split(/\s+/).length > 1) {
+      const compositeDefinition = await generateCompositeDefinition(term);
+      if (compositeDefinition) return compositeDefinition;
+    }
+    
+    // 5. Generate a response about the lack of definition
     const fallbacks = [
       `I couldn't find a specific definition for "${term}". Could you provide more context or try a different term?`,
       `I'm not finding a clear definition for "${term}". It might be a specialized term or phrase. Could you clarify?`,
       `"${term}" doesn't appear in my reference sources. Perhaps check the spelling or try using different keywords?`
     ];
     
-    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+    return getRandomItem(fallbacks);
   }
   
+  // Handle general queries that aren't explicit definition requests
+  async function handleGeneralQuery(query) {
+    // Extract potential terms and check if any have definitions
+    const words = query.split(/\s+/);
+    let foundDefn = false;
+    let response = '';
+    
+    // Try direct lookup of the whole query first
+    try {
+      const wikiResult = await fetchWikipediaInfo(query);
+      if (wikiResult) {
+        return wikiResult;
+      }
+    } catch (e) {}
+    
+    // Try with parts of the query
+    for (let windowSize = 3; windowSize >= 1; windowSize--) {
+      for (let i = 0; i <= words.length - windowSize; i++) {
+        const term = words.slice(i, i + windowSize).join(' ');
+        if (term.length > 3) { // Skip very short terms
+          try {
+            const wikiResult = await fetchWikipediaInfo(term);
+            if (wikiResult) {
+              response = wikiResult;
+              foundDefn = true;
+              break;
+            }
+          } catch (e) {}
+        }
+      }
+      if (foundDefn) break;
+    }
+    
+    if (foundDefn) {
+      return response;
+    }
+    
+    // If no definitions found, provide a conversational response
+    const generalResponses = [
+      "That's an interesting question. I'm primarily designed to help with definitions and explanations. Is there a specific term you'd like me to define?",
+      "I'm not sure I understand completely. I'm best at defining words and explaining concepts. Could you rephrase your question?",
+      "I'd like to help, but I'm specialized in providing definitions and explanations. Could you ask about a specific term or concept?",
+      "That's beyond my current capabilities. I'm primarily a definition assistant. Is there a specific word or phrase you'd like me to explain?"
+    ];
+    
+    return getRandomItem(generalResponses);
+  }
+  
+  // Generate a composite definition for multi-word terms
+  async function generateCompositeDefinition(compoundTerm) {
+    // Split into individual words
+    const words = compoundTerm.split(/[\s,]+/);
+    
+    // Get definitions for individual words
+    const definitions = [];
+    for (const word of words) {
+      if (word.length > 3 && !['and', 'the', 'of', 'in', 'on', 'by', 'for', 'with', 'a', 'an'].includes(word.toLowerCase())) {
+        // First try dictionary for single words
+        let def = null;
+        try {
+          def = await fetchDictionaryDefinition(word);
+        } catch (e) {}
+        
+        // If that fails, try Wikipedia
+        if (!def) {
+          try {
+            def = await fetchWikipediaInfo(word);
+          } catch (e) {}
+        }
+        
+        if (def && !def.includes("couldn't find")) {
+          // Extract just the core definition without the term itself
+          const defParts = def.split(':');
+          if (defParts.length > 1) {
+            definitions.push(`"${word}": ${defParts.slice(1).join(':').trim()}`);
+          } else {
+            definitions.push(`"${word}": ${def}`);
+          }
+        }
+      }
+    }
+    
+    if (definitions.length === 0) return null;
+    
+    // Craft a composite response
+    if (definitions.length === 1) {
+      return `"${compoundTerm}" likely refers to: ${definitions[0]}`;
+    } else {
+      return `"${compoundTerm}" combines several concepts: ${definitions.join('; ')}`;
+    }
+  }
+  
+  // Check against our built-in slang dictionary
+  function checkSlangDictionary(term) {
+    const slangDictionary = {
+      "omg": "OMG (abbreviation): Oh My God/Gosh - an expression of surprise, shock, or excitement.",
+      "lol": "LOL (abbreviation): Laughing Out Loud - used to indicate laughter or amusement.",
+      "brb": "BRB (abbreviation): Be Right Back - used to indicate you're temporarily stepping away.",
+      "afaik": "AFAIK (abbreviation): As Far As I Know - used to qualify a statement with limited knowledge.",
+      "tbh": "TBH (abbreviation): To Be Honest - used to introduce a candid statement.",
+      "imo": "IMO (abbreviation): In My Opinion - used to indicate a personal viewpoint.",
+      "imho": "IMHO (abbreviation): In My Humble/Honest Opinion - used to politely express a viewpoint.",
+      "idk": "IDK (abbreviation): I Don't Know - expressing uncertainty or lack of knowledge.",
+      "btw": "BTW (abbreviation): By The Way - used to introduce a side comment or additional information.",
+      "fyi": "FYI(abbreviation): For Your Information - used to preface sharing information.",
+      "ttyl": "TTYL (abbreviation): Talk To You Later - a casual farewell.",
+      "lmao": "LMAO (abbreviation): Laughing My A** Off - used to express intense amusement.",
+      "rofl": "ROFL (abbreviation): Rolling On Floor Laughing - used to express extreme amusement.",
+      "asap": "ASAP (abbreviation): As Soon As Possible - used to request urgency.",
+      "tl;dr": "TL;DR (abbreviation): Too Long; Didn't Read - used to introduce a summary of lengthy content.",
+      "yolo": "YOLO (abbreviation): You Only Live Once - used to justify risky or impulsive behavior.",
+      "fomo": "FOMO (abbreviation): Fear Of Missing Out - anxiety about missing exciting events.",
+      "diy": "DIY (abbreviation): Do It Yourself - projects built or repaired by non-professionals.",
+      "eli5": "ELI5 (abbreviation): Explain Like I'm 5 - request for a simplified explanation.",
+      "smh": "SMH (abbreviation): Shaking My Head - expressing disappointment or disapproval.",
+      "tmi": "TMI (abbreviation): Too Much Information - indicating someone has shared excessive personal details."
+    };
+    
+    // Case-insensitive lookup
+    return slangDictionary[term.toLowerCase()];
+  }
+  
+  // Fetch definition from online dictionary API
   async function fetchDictionaryDefinition(term) {
     try {
-      // Create direct URL for the term - avoid sending "mean" in the query
+      // Create direct URL for the term
       const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`;
       const response = await fetch(url);
       
@@ -628,6 +776,7 @@
     }
   }
   
+  // Fetch information from Wikipedia
   async function fetchWikipediaInfo(term) {
     try {
       // Search for the term
@@ -648,7 +797,9 @@
       const termLower = term.toLowerCase();
       
       // Skip if result doesn't seem related to our term
-      if (!searchResultTitle.includes(termLower) && !termLower.includes(searchResultTitle.split(' ')[0])) {
+      // But allow major historical figures and entities that might not have direct word matches
+      const isProperNoun = termLower.split(' ').some(word => word.length > 0 && word[0] === word[0].toUpperCase());
+      if (!isProperNoun && !searchResultTitle.includes(termLower) && !termLower.includes(searchResultTitle.split(' ')[0])) {
         return null;
       }
       
@@ -704,12 +855,66 @@
     }
   }
   
+  // Random item selector
+  function getRandomItem(array) {
+    return array[Math.floor(Math.random() * array.length)];
+  }
+  
+  // Random greeting responses
+  function getRandomGreeting() {
+    const greetings = [
+      "Hello! How can I help you today?",
+      "Hi there! I'm ready to assist with definitions or explanations.",
+      "Hey! What would you like me to look up for you?",
+      "Greetings! How can I assist you with definitions today?",
+      "Hi! I'm here to help. What term would you like me to explain?"
+    ];
+    return getRandomItem(greetings);
+  }
+  
+  // Random farewell responses
+  function getRandomFarewell() {
+    const farewells = [
+      "Goodbye! Feel free to come back anytime you need assistance.",
+      "See you later! Just click the bookmarklet when you need me again.",
+      "Take care! I'll be here when you need definitions.",
+      "Farewell! Happy to help anytime you have questions.",
+      "Bye for now! Don't hesitate to return when you need information."
+    ];
+    return getRandomItem(farewells);
+  }
+  
+  // Random gratitude responses
+  function getRandomGratitudeResponse() {
+    const responses = [
+      "You're welcome! Happy to help.",
+      "Anytime! Let me know if you need anything else.",
+      "My pleasure! Feel free to ask if you have more questions.",
+      "Glad I could assist! That's what I'm here for.",
+      "No problem at all! I'm always ready to help with definitions."
+    ];
+    return getRandomItem(responses);
+  }
+  
+  // Random acknowledgment responses
+  function getRandomAcknowledgmentResponse() {
+    const responses = [
+      "Thank you! I aim to be helpful.",
+      "I appreciate that! Let me know if you need anything else.",
+      "Thanks for the feedback! What else can I help with?",
+      "I'm glad it was useful! Feel free to ask more questions.",
+      "Thanks! I'm here to provide the best definitions I can."
+    ];
+    return getRandomItem(responses);
+  }
+  
+  // Add a message to the conversation
   function addMsg(sender, text) {
     document.getElementById('lexi-loader').style.display = 'none';
     
     var m = document.createElement('div');
     m.style.cssText = sender === 'user' 
-      ?'background:rgba(95,99,242,0.15);padding:8px 12px;border-radius:12px 12px 0 12px;align-self:flex-end;max-width:85%;margin-left:auto;box-shadow:0 2px 5px rgba(0,0,0,0.1);animation:fadeIn 0.3s;' 
+      ? 'background:rgba(95,99,242,0.15);padding:8px 12px;border-radius:12px 12px 0 12px;align-self:flex-end;max-width:85%;margin-left:auto;box-shadow:0 2px 5px rgba(0,0,0,0.1);animation:fadeIn 0.3s;' 
       : 'background:rgba(25,28,40,0.5);padding:8px 12px;border-radius:12px 12px 12px 0;align-self:flex-start;max-width:85%;box-shadow:0 2px 5px rgba(0,0,0,0.1);animation:fadeIn 0.3s;';
     
     var senderDiv = document.createElement('div');
@@ -725,6 +930,7 @@
     document.getElementById('lexi-body').scrollTop = document.getElementById('lexi-body').scrollHeight;
   }
   
+  // Show toast notification
   function showToast(message) {
     var t = document.createElement('div');
     t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(95,99,242,0.9);color:white;padding:8px 16px;border-radius:4px;font-family:Arial,sans-serif;z-index:10000;animation:fadeIn 0.3s;';
