@@ -362,19 +362,27 @@
       return { type: 'self_introduction', query: cleanQuery };
     }
     
-    const defMatch = cleanQuery.match(/^(?:what|who|define|meaning|definition|explain).*?(?:is|are|does|mean|means|of|by|for)*?\s+["']?([^"'?]+)["']?\??$/i);
-    if (defMatch && defMatch[1]) {
-      return { type: 'definition', term: defMatch[1].trim() };
-    }
-    
+    // Extract term from "what does X mean"
     const meanMatch = cleanQuery.match(/^what does\s+["']?([^"'?]+)["']?\s+mean\??$/i);
     if (meanMatch && meanMatch[1]) {
       return { type: 'definition', term: meanMatch[1].trim() };
     }
     
+    // Extract term from "what is X"
     const isMatch = cleanQuery.match(/^what\s+(?:is|are)\s+["']?([^"'?]+)["']?\??$/i);
     if (isMatch && isMatch[1]) {
       return { type: 'definition', term: isMatch[1].trim() };
+    }
+    
+    // Extract term from definition requests
+    const defMatch = cleanQuery.match(/^(?:what|who|define|meaning|definition|explain).*?(?:is|are|does|mean|means|of|by|for)*?\s+["']?([^"'?]+)["']?\??$/i);
+    if (defMatch && defMatch[1]) {
+      return { type: 'definition', term: defMatch[1].trim() };
+    }
+    
+    // If it's very short, try to define it directly
+    if (cleanQuery.split(/\s+/).length === 1 && cleanQuery.length > 2) {
+      return { type: 'definition', term: cleanQuery };
     }
     
     return { type: 'general_query', query: cleanQuery };
@@ -469,19 +477,33 @@
           const words = query.split(/\s+/);
           let foundDefn = false;
           
-          for (let windowSize = 3; windowSize >= 1; windowSize--) {
-            for (let i = 0; i <= words.length - windowSize; i++) {
-              const term = words.slice(i, i + windowSize).join(' ');
-              try {
-                const wikiResult = await fetchWikipediaInfo(term);
-                if (wikiResult) {
-                  response = wikiResult;
-                  foundDefn = true;
-                  break;
-                }
-              } catch (e) {}
+          // First try a direct lookup if the query is short
+          if (words.length <= 3) {
+            try {
+              const wikiResult = await fetchWikipediaInfo(query);
+              if (wikiResult) {
+                response = wikiResult;
+                foundDefn = true;
+              }
+            } catch (e) {}
+          }
+          
+          // If that fails, try with parts of the query
+          if (!foundDefn) {
+            for (let windowSize = 3; windowSize >= 1; windowSize--) {
+              for (let i = 0; i <= words.length - windowSize; i++) {
+                const term = words.slice(i, i + windowSize).join(' ');
+                try {
+                  const wikiResult = await fetchWikipediaInfo(term);
+                  if (wikiResult) {
+                    response = wikiResult;
+                    foundDefn = true;
+                    break;
+                  }
+                } catch (e) {}
+              }
+              if (foundDefn) break;
             }
-            if (foundDefn) break;
           }
           
           if (!foundDefn) {
@@ -523,8 +545,10 @@
   }
   
   async function lookupDefinition(term) {
+    // Normalize the term
     term = term.trim().replace(/^(the|a|an) /i, '');
     
+    // Try exact dictionary lookup for single words
     if (term.split(/\s+/).length === 1) {
       try {
         const dictResult = await fetchDictionaryDefinition(term);
@@ -534,6 +558,7 @@
       }
     }
     
+    // Try Wikipedia for phrases or for single words when dictionary fails
     try {
       const wikiResult = await fetchWikipediaInfo(term);
       if (wikiResult) return wikiResult;
@@ -541,6 +566,7 @@
       console.error("Wikipedia API error:", e);
     }
     
+    // Generate a response about the lack of definition
     const fallbacks = [
       `I couldn't find a specific definition for "${term}". Could you provide more context or try a different term?`,
       `I'm not finding a clear definition for "${term}". It might be a specialized term or phrase. Could you clarify?`,
@@ -551,82 +577,131 @@
   }
   
   async function fetchDictionaryDefinition(term) {
-    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`);
-    
-    if (!response.ok) return null;
-    
-    const data = await response.json();
-    if (!Array.isArray(data) || data.length === 0) return null;
-    
-    const entry = data[0];
-    if (!entry.meanings || entry.meanings.length === 0) return null;
-    
-    // Fix for the specific issue seen in the logs
-    // The API was returning "mean" definition instead of the requested term
-    if (entry.word.toLowerCase() !== term.toLowerCase()) {
+    try {
+      // Create direct URL for the term - avoid sending "mean" in the query
+      const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`;
+      const response = await fetch(url);
+      
+      // If response is not ok, immediately return null
+      if (!response.ok) return null;
+      
+      // Parse the response
+      const data = await response.json();
+      
+      // Validate the response
+      if (!Array.isArray(data) || data.length === 0) return null;
+      
+      const entry = data[0];
+      
+      // Critical check: make sure the word returned is the one we asked for
+      if (!entry.word || entry.word.toLowerCase() !== term.toLowerCase()) {
+        console.log("Word mismatch:", term, "vs", entry.word);
+        return null;
+      }
+      
+      // Check if meanings are available
+      if (!entry.meanings || entry.meanings.length === 0) return null;
+      
+      // Get the first meaning
+      const meaning = entry.meanings[0];
+      if (!meaning.definitions || meaning.definitions.length === 0) return null;
+      
+      // Build the definition text
+      const def = meaning.definitions[0].definition;
+      const pos = meaning.partOfSpeech ? ` (${meaning.partOfSpeech})` : '';
+      let result = `${term}${pos}: ${def}`;
+      
+      // Add example if available
+      if (meaning.definitions[0].example) {
+        result += ` Example: "${meaning.definitions[0].example}"`;
+      }
+      
+      // Add synonyms if available
+      if (meaning.synonyms && meaning.synonyms.length > 0) {
+        result += ` Synonyms: ${meaning.synonyms.slice(0, 3).join(', ')}.`;
+      }
+      
+      return result;
+    } catch (error) {
+      console.error("Error fetching dictionary definition:", error);
       return null;
     }
-    
-    const meaning = entry.meanings[0];
-    if (!meaning.definitions || meaning.definitions.length === 0) return null;
-    
-    const def = meaning.definitions[0].definition;
-    const pos = meaning.partOfSpeech ? ` (${meaning.partOfSpeech})` : '';
-    let result = `${term}${pos}: ${def}`;
-    
-    if (meaning.definitions[0].example) {
-      result += ` Example: "${meaning.definitions[0].example}"`;
-    }
-    
-    if (meaning.synonyms && meaning.synonyms.length > 0) {
-      result += ` Synonyms: ${meaning.synonyms.slice(0, 3).join(', ')}.`;
-    }
-    
-    return result;
   }
   
   async function fetchWikipediaInfo(term) {
-    const wikiSearchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(term)}&format=json&origin=*&srlimit=1`;
-    const searchResponse = await fetch(wikiSearchUrl);
-    const searchData = await searchResponse.json();
-    
-    if (!searchData.query || !searchData.query.search || searchData.query.search.length === 0) {
+    try {
+      // Search for the term
+      const wikiSearchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(term)}&format=json&origin=*&srlimit=1`;
+      const searchResponse = await fetch(wikiSearchUrl);
+      
+      if (!searchResponse.ok) return null;
+      
+      const searchData = await searchResponse.json();
+      
+      // Validate search results
+      if (!searchData.query || !searchData.query.search || searchData.query.search.length === 0) {
+        return null;
+      }
+      
+      // Check if the result is related to our term
+      const searchResultTitle = searchData.query.search[0].title.toLowerCase();
+      const termLower = term.toLowerCase();
+      
+      // Skip if result doesn't seem related to our term
+      if (!searchResultTitle.includes(termLower) && !termLower.includes(searchResultTitle.split(' ')[0])) {
+        return null;
+      }
+      
+      // Get extract from the page
+      const pageId = searchData.query.search[0].pageid;
+      const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&pageids=${pageId}&format=json&origin=*`;
+      const extractResponse = await fetch(extractUrl);
+      
+      if (!extractResponse.ok) return null;
+      
+      const extractData = await extractResponse.json();
+      
+      // Validate extract data
+      if (!extractData.query || !extractData.query.pages || !extractData.query.pages[pageId]) {
+        return null;
+      }
+      
+      const extract = extractData.query.pages[pageId].extract;
+      
+      // Skip disambiguation pages
+      if (!extract || extract.toLowerCase().includes("may refer to:")) {
+        return null;
+      }
+      
+      // Parse sentences
+      const sentences = extract.match(/[^.!?]+[.!?]+/g) || [];
+      
+      // No sentences found
+      if (sentences.length === 0) {
+        return extract.length < 150 ? extract : null;
+      }
+      
+      // Check if it looks like a list
+      const firstSentence = sentences[0];
+      if (firstSentence.includes(",") && 
+          (firstSentence.includes(" or ") || firstSentence.includes(" and ")) &&
+          firstSentence.split(',').length > 3) {
+        return `"${term}" has multiple meanings or refers to several different concepts.`;
+      }
+      
+      // Return 1-2 sentences
+      if (sentences.length === 1) {
+        return sentences[0];
+      } else {
+        // Include second sentence if it's brief
+        return sentences[1].length < 100 ? 
+               sentences[0] + " " + sentences[1] : 
+               sentences[0];
+      }
+    } catch (error) {
+      console.error("Error fetching Wikipedia info:", error);
       return null;
     }
-    
-    // Check if the search result title contains our term (case insensitive)
-    const searchResultTitle = searchData.query.search[0].title.toLowerCase();
-    const termLower = term.toLowerCase();
-    if (!searchResultTitle.includes(termLower) && !termLower.includes(searchResultTitle)) {
-      return null; // The search result is not related to our term
-    }
-    
-    const pageId = searchData.query.search[0].pageid;
-    const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&pageids=${pageId}&format=json&origin=*`;
-    const extractResponse = await fetch(extractUrl);
-    
-    if (!extractResponse.ok) return null;
-    
-    const extractData = await extractResponse.json();
-    const pages = extractData.query.pages;
-    
-    if (!pages || !pages[pageId] || !pages[pageId].extract) return null;
-    
-    let extract = pages[pageId].extract;
-    
-    if (extract.toLowerCase().includes("may refer to:")) return null;
-    
-    const sentences = extract.match(/[^.!?]+[.!?]+/g) || [];
-    
-    if (sentences.length === 0) return extract.length < 150 ? extract : null;
-    
-    const firstSentence = sentences[0];
-    if (firstSentence.includes(",") && firstSentence.includes(" or ") && firstSentence.includes(" and ")) {
-      return `"${term}" appears to have multiple meanings. Please specify which context you're interested in.`;
-    }
-    
-    return sentences.length === 1 ? sentences[0] : 
-           sentences[1].length < 100 ? sentences[0] + " " + sentences[1] : sentences[0];
   }
   
   function addMsg(sender, text) {
@@ -634,7 +709,7 @@
     
     var m = document.createElement('div');
     m.style.cssText = sender === 'user' 
-      ? 'background:rgba(95,99,242,0.15);padding:8px 12px;border-radius:12px 12px 0 12px;align-self:flex-end;max-width:85%;margin-left:auto;box-shadow:0 2px 5px rgba(0,0,0,0.1);animation:fadeIn 0.3s;' 
+      ?'background:rgba(95,99,242,0.15);padding:8px 12px;border-radius:12px 12px 0 12px;align-self:flex-end;max-width:85%;margin-left:auto;box-shadow:0 2px 5px rgba(0,0,0,0.1);animation:fadeIn 0.3s;' 
       : 'background:rgba(25,28,40,0.5);padding:8px 12px;border-radius:12px 12px 12px 0;align-self:flex-start;max-width:85%;box-shadow:0 2px 5px rgba(0,0,0,0.1);animation:fadeIn 0.3s;';
     
     var senderDiv = document.createElement('div');
@@ -659,7 +734,7 @@
     setTimeout(function() {
       t.style.opacity = '0';
       t.style.transition = 'opacity 0.3s ease';
-      setTimeout(function(){
+      setTimeout(function() {
         document.body.removeChild(t);
       }, 300);
     }, 2000);
