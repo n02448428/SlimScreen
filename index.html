@@ -3,117 +3,262 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lexi Research Assistant</title>
+  <title>Lexi - Smart Dictionary & Research Assistant</title>
+  <meta name="description" content="Lexi is a smart dictionary and research assistant that helps you understand any text with just a highlight and keyboard shortcut.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
   <style>
+    :root {
+      --primary: #5F63F2;
+      --primary-dark: #4a4fd2;
+      --bg-dark: #161925;
+      --bg-card: rgba(45, 48, 65, 0.6);
+      --text-light: #e0e0e0;
+    }
+    
     body {
-      font-family: Arial, sans-serif;
-      background: #161925;
-      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-light);
       line-height: 1.6;
       margin: 0;
-      padding: 20px;
+      padding: 0;
+    }
+    
+    header {
+      background: linear-gradient(135deg, rgba(95, 99, 242, 0.8) 0%, rgba(70, 73, 200, 0.8) 100%);
+      padding: 40px 20px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     
     .container {
-      max-width: 600px;
+      max-width: 800px;
       margin: 0 auto;
-      background: rgba(45, 48, 65, 0.6);
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      padding: 0 20px;
     }
     
     h1 {
-      color: #fff;
-      border-bottom: 2px solid #5F63F2;
+      font-size: 2.5rem;
+      margin: 0;
+      color: white;
+    }
+    
+    .tagline {
+      font-size: 1.2rem;
+      opacity: 0.9;
+      margin-top: 10px;
+    }
+    
+    main {
+      padding: 40px 0;
+    }
+    
+    .card {
+      background: var(--bg-card);
+      border-radius: 10px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      backdrop-filter: blur(10px);
+    }
+    
+    h2 {
+      color: white;
+      border-bottom: 2px solid var(--primary);
       padding-bottom: 10px;
+      margin-top: 0;
     }
     
     .bookmarklet {
       display: inline-block;
-      background: #5F63F2;
+      background: var(--primary);
       color: white;
-      padding: 10px 15px;
-      border-radius: 5px;
+      padding: 12px 20px;
+      border-radius: 6px;
       text-decoration: none;
       margin: 20px 0;
       font-weight: bold;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 8px rgba(95, 99, 242, 0.3);
+    }
+    
+    .bookmarklet:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(95, 99, 242, 0.4);
     }
     
     .instructions {
       background: rgba(95, 99, 242, 0.1);
-      padding: 15px;
-      border-radius: 5px;
+      padding: 25px;
+      border-radius: 8px;
       margin: 20px 0;
     }
     
     .step {
-      margin-bottom: 15px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
     }
     
     .step-number {
-      display: inline-block;
-      width: 25px;
-      height: 25px;
-      background: #5F63F2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      background: var(--primary);
       color: white;
       text-align: center;
       border-radius: 50%;
-      margin-right: 10px;
-    }
-    
-    .demo {
-      margin-top: 30px;
-    }
-    
-    button {
-      background: #5F63F2;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 5px;
-      cursor: pointer;
+      margin-right: 15px;
       font-weight: bold;
     }
     
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s ease;
+    }
+    
     button:hover {
-      background: #4a4fd2;
+      background: var(--primary-dark);
+    }
+    
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+    
+    .feature {
+      background: rgba(45, 48, 65, 0.4);
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .feature-icon {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+    }
+    
+    footer {
+      text-align: center;
+      padding: 20px;
+      margin-top: 40px;
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+    
+    .demo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 30px 0;
+    }
+    
+    /* Mobile Responsive */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 2rem;
+      }
+      
+      .features {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Lexi Research Assistant</h1>
-    
-    <p>Your personal research assistant that helps you understand any text with concise definitions.</p>
-    
-    <div class="instructions">
-      <h2>How to Install Lexi:</h2>
-      <div class="step">
-        <span class="step-number">1</span>
-        <span>Drag this bookmarklet to your bookmarks bar:</span>
-      </div>
-      
-      <a class="bookmarklet" href="javascript:(function(){var script=document.createElement('script');script.src='https://slim-screen.vercel.app/simple-lexi-core.js';script.onload=function(){if(typeof window.toggleLexi==='function'){window.toggleLexi();}else{alert('Could not find Lexi toggle function!');}};script.onerror=function(){alert('Failed to load Lexi script!');};document.body.appendChild(script);})();">Lexi Assistant</a>
-      
-      <div class="step">
-        <span class="step-number">2</span>
-        <span>Visit any webpage and click the bookmarklet to activate Lexi</span>
-      </div>
-      
-      <div class="step">
-        <span class="step-number">3</span>
-        <span>Highlight any text and press <strong>Ctrl+Shift+X</strong> to get a definition</span>
-      </div>
+  <header>
+    <div class="container">
+      <h1>📚 Lexi</h1>
+      <p class="tagline">Your intelligent dictionary & research assistant</p>
     </div>
-    
-    <div class="demo">
-      <h2>Try Lexi Right Now:</h2>
-      <p>Click the button below to activate Lexi on this page:</p>
-      <button onclick="if(typeof window.toggleLexi === 'function') { window.toggleLexi(); } else { alert('Please wait for Lexi to load completely'); }">Activate Lexi</button>
-    </div>
-  </div>
+  </header>
   
-  <script src="simple-lexi-core.js"></script>
+  <main class="container">
+    <div class="card">
+      <h2>Get instant definitions anywhere on the web</h2>
+      <p>Lexi gives you instant definitions, explanations, and research assistance with just a highlight and keyboard shortcut.</p>
+      
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">📖</div>
+          <h3>Dictionary</h3>
+          <p>Get instant word definitions with examples and synonyms</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🔍</div>
+          <h3>Wikipedia</h3>
+          <p>Lookup concepts, phrases and proper names with Wikipedia</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">💬</div>
+          <h3>Assistant</h3>
+          <p>Ask questions and get helpful AI-powered explanations</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>How to Install Lexi:</h2>
+      <div class="instructions">
+        <div class="step">
+          <span class="step-number">1</span>
+          <span>Drag this bookmarklet to your bookmarks bar:</span>
+        </div>
+        
+        <div class="demo-container">
+          <a class="bookmarklet" href="javascript:(function(){var w=document.getElementById('lexi-box');if(w){w.remove();return;}var script=document.createElement('script');script.src='https://lexi-assistant.vercel.app/lexi-core.js';document.body.appendChild(script);})();">Lexi Assistant</a>
+        </div>
+        
+        <div class="step">
+          <span class="step-number">2</span>
+          <span>Visit any webpage and click the bookmarklet to activate Lexi</span>
+        </div>
+        
+        <div class="step">
+          <span class="step-number">3</span>
+          <span>Highlight any text and press <strong>Ctrl+Shift+X</strong> to get a definition, or type a question into Lexi's input box</span>
+        </div>
+      </div>
+      
+      <div class="demo">
+        <h2>Try Lexi Right Now:</h2>
+        <p>Click the button below to activate Lexi on this page:</p>
+        <button onclick="activateLexi()">Activate Lexi</button>
+      </div>
+    </div>
+  </main>
+  
+  <footer class="container">
+    <p>Lexi works in most modern browsers and respects your privacy.</p>
+  </footer>
+  
+  <script>
+    // Load Lexi when button is clicked
+    function activateLexi() {
+      var w = document.getElementById('lexi-box');
+      if (w) {
+        w.remove();
+        return;
+      }
+      
+      var script = document.createElement('script');
+      script.src = 'lexi-core.js';
+      script.onerror = function() {
+        alert('Failed to load Lexi. Please try again later.');
+      };
+      document.body.appendChild(script);
+    }
+  </script>
 </body>
 </html>
