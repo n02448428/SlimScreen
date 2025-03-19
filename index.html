@@ -1,226 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lexi - Your Research Assistant</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lexi Research Assistant</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      padding: 0;
-      margin: 0;
-      background: #0F1117;
-      color: #f0f0f0;
+      font-family: Arial, sans-serif;
+      background: #161925;
+      color: #e0e0e0;
       line-height: 1.6;
+      margin: 0;
+      padding: 20px;
     }
     
-    #welcome {
-      max-width: 640px;
-      margin: 40px auto;
-      background: #161925;
-      padding: 32px;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-      border: 1px solid rgba(95, 99, 242, 0.2);
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: rgba(45, 48, 65, 0.6);
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     }
     
     h1 {
-      margin-top: 0;
-      font-weight: 600;
-      font-size: 28px;
       color: #fff;
-      position: relative;
-      display: inline-block;
+      border-bottom: 2px solid #5F63F2;
+      padding-bottom: 10px;
     }
     
-    h1:after {
-      content: '';
-      position: absolute;
-      left: 0;
-      bottom: -8px;
-      width: 60px;
-      height: 3px;
-      background: #5F63F2;
-      border-radius: 3px;
-    }
-    
-    p {
-      color: #e0e0e0;
-      margin-bottom: 20px;
-    }
-    
-    #bookmarklet {
+    .bookmarklet {
       display: inline-block;
       background: #5F63F2;
-      color: #fff;
-      padding: 12px 20px;
-      border-radius: 6px;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
       text-decoration: none;
-      margin-top: 20px;
-      cursor: move;
-      font-weight: 500;
-      transition: all 0.2s;
-      box-shadow: 0 4px 12px rgba(95, 99, 242, 0.3);
-    }
-    
-    #bookmarklet:hover {
-      background: #6D71FF;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(95, 99, 242, 0.4);
-    }
-    
-    .bookmarklet-instructions {
-      margin: 24px 0;
-      padding: 16px;
-      background: rgba(95, 99, 242, 0.1);
-      border-radius: 8px;
-      border: 1px solid rgba(95, 99, 242, 0.2);
-    }
-    
-    .feature-list {
-      margin-top: 32px;
-    }
-    
-    h2 {
-      font-weight: 600;
-      font-size: 20px;
-      color: #fff;
-      margin-top: 32px;
-      margin-bottom: 16px;
-    }
-    
-    .feature-item {
-      margin-bottom: 12px;
-      display: flex;
-      align-items: flex-start;
-    }
-    
-    .feature-icon {
-      margin-right: 12px;
-      color: #5F63F2;
+      margin: 20px 0;
       font-weight: bold;
-      flex-shrink: 0;
-      width: 24px;
-      height: 24px;
+    }
+    
+    .instructions {
       background: rgba(95, 99, 242, 0.1);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 20px 0;
     }
     
-    .shortcut {
+    .step {
+      margin-bottom: 15px;
+    }
+    
+    .step-number {
       display: inline-block;
-      padding: 2px 8px;
-      background: rgba(95, 99, 242, 0.15);
-      border-radius: 4px;
-      color: #8A8FFF;
-      font-family: monospace;
-      font-weight: 500;
-    }
-    
-    ul {
-      padding-left: 20px;
-    }
-    
-    li {
-      margin-bottom: 8px;
-    }
-    
-    li strong {
-      color: #5F63F2;
-    }
-    
-    .footer {
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(255,255,255,0.1);
-      font-size: 14px;
-      color: #a0a0a0;
+      width: 25px;
+      height: 25px;
+      background: #5F63F2;
+      color: white;
       text-align: center;
+      border-radius: 50%;
+      margin-right: 10px;
     }
     
-    @media (max-width: 768px) {
-      #welcome {
-        margin: 20px;
-        padding: 24px;
-      }
-      
-      h1 {
-        font-size: 24px;
-      }
+    .demo {
+      margin-top: 30px;
+    }
+    
+    button {
+      background: #5F63F2;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    button:hover {
+      background: #4a4fd2;
     }
   </style>
 </head>
 <body>
-  <div id="welcome">
-    <h1>Lexi - Your Research Assistant</h1>
-    <p>
-      Your personal research assistant with a sleek, modern interface. Lexi helps you understand any text with 
-      concise definitions and explanations - directly on your screen without disrupting your flow.
-    </p>
+  <div class="container">
+    <h1>Lexi Research Assistant</h1>
     
-    <div class="bookmarklet-instructions">
-      <p>
-        <strong>To use Lexi on any webpage:</strong> Drag this bookmarklet to your bookmarks bar:
-      </p>
-      <a id="bookmarklet" href="javascript:(function(){if(!window.lexiLoaded){var script=document.createElement('script');script.src='https://slim-screen.vercel.app/lexi-core.js';script.onload=function(){window.lexiLoaded=true;if(typeof window.slimScreenToggle==='function'){window.slimScreenToggle();}};document.body.appendChild(script);}else{if(typeof window.slimScreenToggle==='function'){window.slimScreenToggle();}}})();">Lexi: Research Assistant</a>
-    </div>
+    <p>Your personal research assistant that helps you understand any text with concise definitions.</p>
     
-    <div class="feature-list">
-      <h2>How to Use:</h2>
-      <div class="feature-item">
-        <div class="feature-icon">1</div>
-        <span>Drag the bookmarklet to your bookmarks bar</span>
+    <div class="instructions">
+      <h2>How to Install Lexi:</h2>
+      <div class="step">
+        <span class="step-number">1</span>
+        <span>Drag this bookmarklet to your bookmarks bar:</span>
       </div>
-      <div class="feature-item">
-        <div class="feature-icon">2</div>
-        <span>Visit any webpage and click the bookmarklet to <strong>open Lexi</strong></span>
+      
+      <a class="bookmarklet" href="javascript:(function(){var script=document.createElement('script');script.src='https://slim-screen.vercel.app/simple-lexi-core.js';script.onload=function(){if(typeof window.toggleLexi==='function'){window.toggleLexi();}else{alert('Could not find Lexi toggle function!');}};script.onerror=function(){alert('Failed to load Lexi script!');};document.body.appendChild(script);})();">Lexi Assistant</a>
+      
+      <div class="step">
+        <span class="step-number">2</span>
+        <span>Visit any webpage and click the bookmarklet to activate Lexi</span>
       </div>
-      <div class="feature-item">
-        <div class="feature-icon">3</div>
-        <span>Highlight any text and press <span class="shortcut">Ctrl+Shift+X</span> to get an instant definition</span>
-      </div>
-      <div class="feature-item">
-        <div class="feature-icon">4</div>
-        <span>Use the minimize button (<span class="shortcut">━</span>) to shrink Lexi to a compact bar</span>
-      </div>
-      <div class="feature-item">
-        <div class="feature-icon">5</div>
-        <span>Click the bookmarklet again or the X button to close Lexi</span>
+      
+      <div class="step">
+        <span class="step-number">3</span>
+        <span>Highlight any text and press <strong>Ctrl+Shift+X</strong> to get a definition</span>
       </div>
     </div>
     
-    <div style="margin-top: 30px;">
-      <h2>Features:</h2>
-      <ul>
-        <li><strong>Instant Definitions:</strong> Highlight text and press <span class="shortcut">Ctrl+Shift+X</span> for explanations</li>
-        <li><strong>Sleek Design:</strong> Dark mode interface with minimal footprint</li>
-        <li><strong>Draggable:</strong> Position anywhere on your screen</li>
-        <li><strong>Minimize Option:</strong> Keep Lexi available as a compact bar</li>
-        <li><strong>Privacy:</strong> Conversations reset when closed</li>
-      </ul>
-    </div>
-    
-    <div class="feature-list">
-      <h2>Mobile/Tablet Users:</h2>
-      <div class="feature-item">
-        <div class="feature-icon">→</div>
-        <span><strong>iOS (Safari):</strong> Add a bookmark, edit it and paste the bookmarklet code in URL field</span>
-      </div>
-      <div class="feature-item">
-        <div class="feature-icon">→</div>
-        <span><strong>Android:</strong> Create a bookmark and paste the bookmarklet code as URL</span>
-      </div>
-    </div>
-    
-    <div class="footer">
-      Lexi - Your research assistant is just a highlight away. 
+    <div class="demo">
+      <h2>Try Lexi Right Now:</h2>
+      <p>Click the button below to activate Lexi on this page:</p>
+      <button onclick="if(typeof window.toggleLexi === 'function') { window.toggleLexi(); } else { alert('Please wait for Lexi to load completely'); }">Activate Lexi</button>
     </div>
   </div>
-
-  <script src="lexi-core.js"></script>
+  
+  <script src="simple-lexi-core.js"></script>
 </body>
 </html>
