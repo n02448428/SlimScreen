@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SlimScreen AI with Lexi - Your Research Assistant</title>
+  <title>Lexi - Your Research Assistant</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
@@ -16,7 +16,6 @@
       line-height: 1.6;
     }
     
-    /* Dark mode styling */
     #welcome {
       max-width: 640px;
       margin: 40px auto;
@@ -80,7 +79,6 @@
       border: 1px solid rgba(95, 99, 242, 0.2);
     }
     
-    /* Feature list styling */
     .feature-list {
       margin-top: 32px;
     }
@@ -123,14 +121,6 @@
       font-weight: 500;
     }
     
-    .demo-gif {
-      max-width: 100%;
-      border-radius: 8px;
-      margin: 24px 0;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-    
     ul {
       padding-left: 20px;
     }
@@ -152,7 +142,6 @@
       text-align: center;
     }
     
-    /* Mobile responsiveness */
     @media (max-width: 768px) {
       #welcome {
         margin: 20px;
@@ -167,7 +156,7 @@
 </head>
 <body>
   <div id="welcome">
-    <h1>SlimScreen AI with Lexi</h1>
+    <h1>Lexi - Your Research Assistant</h1>
     <p>
       Your personal research assistant with a sleek, modern interface. Lexi helps you understand any text with 
       concise definitions and explanations - directly on your screen without disrupting your flow.
@@ -175,9 +164,9 @@
     
     <div class="bookmarklet-instructions">
       <p>
-        <strong>To use SlimScreen on any webpage:</strong> Drag this bookmarklet to your bookmarks bar:
+        <strong>To use Lexi on any webpage:</strong> Drag this bookmarklet to your bookmarks bar:
       </p>
-      <a id="bookmarklet" href="javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://slim-screen.vercel.app/lexi-slimscreen.js';s.onload=function(){window.slimScreenLoaded=true;if(window.slimScreenToggle){window.slimScreenToggle();}};document.body.appendChild(s);}else{if(window.slimScreenToggle){window.slimScreenToggle();}}})();">Lexi: Research Assistant</a>
+      <a id="bookmarklet" href="javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://slim-screen.vercel.app/lexi-core.js';s.onload=function(){window.slimScreenLoaded=true;if(window.slimScreenToggle){window.slimScreenToggle();}};document.body.appendChild(s);}else{if(window.slimScreenToggle){window.slimScreenToggle();}}})();">Lexi: Research Assistant</a>
     </div>
     
     <div class="feature-list">
@@ -196,23 +185,22 @@
       </div>
       <div class="feature-item">
         <div class="feature-icon">4</div>
-        <span>Ask follow-up questions directly in the chat interface</span>
+        <span>Use the minimize button (<span class="shortcut">━</span>) to shrink Lexi to a compact bar</span>
       </div>
       <div class="feature-item">
         <div class="feature-icon">5</div>
-        <span>Use the minimize button (<span class="shortcut">━</span>) to shrink Lexi to a compact bar</span>
+        <span>Click the bookmarklet again or the X button to close Lexi</span>
       </div>
     </div>
     
     <div style="margin-top: 30px;">
       <h2>Features:</h2>
       <ul>
-        <li><strong>Instant Definitions:</strong> Highlight text and press <span class="shortcut">Ctrl+Shift+X</span> for clear, concise explanations</li>
-        <li><strong>Sleek Design:</strong> Dark mode interface with modern aesthetics and minimal footprint</li>
-        <li><strong>Fully Draggable:</strong> Position the widget anywhere on your screen for optimal viewing</li>
-        <li><strong>Minimize Option:</strong> Keep Lexi available but out of the way as a compact bar</li>
-        <li><strong>Save Conversations:</strong> Export your insights with one click for future reference</li>
-        <li><strong>Page Context:</strong> Lexi can summarize the current page to help with your research</li>
+        <li><strong>Instant Definitions:</strong> Highlight text and press <span class="shortcut">Ctrl+Shift+X</span> for explanations</li>
+        <li><strong>Sleek Design:</strong> Dark mode interface with minimal footprint</li>
+        <li><strong>Draggable:</strong> Position anywhere on your screen</li>
+        <li><strong>Minimize Option:</strong> Keep Lexi available as a compact bar</li>
+        <li><strong>Privacy:</strong> Conversations reset when closed</li>
       </ul>
     </div>
     
@@ -220,20 +208,19 @@
       <h2>Mobile/Tablet Users:</h2>
       <div class="feature-item">
         <div class="feature-icon">→</div>
-        <span><strong>iOS (Safari):</strong> Add a bookmark, then edit it and paste the bookmarklet code in the URL field</span>
+        <span><strong>iOS (Safari):</strong> Add a bookmark, edit it and paste the bookmarklet code in URL field</span>
       </div>
       <div class="feature-item">
         <div class="feature-icon">→</div>
-        <span><strong>Android:</strong> Create a new bookmark and paste the bookmarklet code as the URL</span>
+        <span><strong>Android:</strong> Create a bookmark and paste the bookmarklet code as URL</span>
       </div>
     </div>
     
     <div class="footer">
-      SlimScreen AI with Lexi - Your research assistant is just a highlight away. 
+      Lexi - Your research assistant is just a highlight away. 
     </div>
   </div>
 
-  <!-- Load the script -->
-  <script src="lexi-slimscreen.js"></script>
+  <script src="lexi-core.js"></script>
 </body>
 </html>
