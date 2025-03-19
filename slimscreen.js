@@ -1,45 +1,26 @@
 (function() {
-  // Track widget state
   let widgetVisible = false;
   let widget = null;
-  
-  // Cache for responses
   const responseCache = {};
-  
-  // Conversation context
   const conversationHistory = [];
   const MAX_HISTORY = 5;
   
-  // Create and show widget
   function showWidget() {
-    if (!widget) {
-      // Create widget element and styles
-      createWidget();
-    }
+    if (!widget) createWidget();
     widget.style.display = 'block';
     widgetVisible = true;
   }
   
-  // Hide widget
   function hideWidget() {
-    if (widget) {
-      widget.style.display = 'none';
-    }
+    if (widget) widget.style.display = 'none';
     widgetVisible = false;
   }
   
-  // Toggle widget visibility
   function toggleWidget() {
-    if (widgetVisible) {
-      hideWidget();
-    } else {
-      showWidget();
-    }
+    widgetVisible ? hideWidget() : showWidget();
   }
   
-  // Create the widget
   function createWidget() {
-    // Add widget CSS
     const style = document.createElement('style');
     style.textContent = `
       #lexi-box {
@@ -134,7 +115,6 @@
     `;
     document.head.appendChild(style);
     
-    // Create widget
     const w = document.createElement('div');
     w.id = 'lexi-box';
     w.innerHTML = `
@@ -166,17 +146,14 @@
     document.body.appendChild(w);
     widget = w;
     
-    // Add resize handle
     const resizeHandle = document.createElement('div');
     resizeHandle.style.cssText = 'position:absolute;bottom:0;right:0;width:15px;height:15px;cursor:nwse-resize;opacity:0.5;background:linear-gradient(135deg, transparent 50%, rgba(95,99,242,0.5) 50%);border-bottom-right-radius:10px;';
     w.appendChild(resizeHandle);
     w.dataset.state = 'expanded';
     
-    // Add event listeners
     setupEventListeners(w);
   }
   
-  // Setup event listeners for widget controls
   function setupEventListeners(w) {
     document.getElementById('lexi-close').onclick = function() {
       w.remove();
@@ -193,7 +170,6 @@
       const resizeHandle = w.querySelector('div[style*="nwse-resize"]');
       
       if (w.dataset.state === 'minimized' || w.dataset.state === 'ultra-minimized') {
-        // Expand
         w.style.width = '320px';
         w.style.height = 'auto';
         w.style.resize = 'both';
@@ -216,7 +192,6 @@
         this.textContent = '▁';
         w.dataset.state = 'expanded';
       } else {
-        // Minimize
         w.style.height = '34px';
         w.style.width = '105px';
         w.style.resize = 'none';
@@ -315,7 +290,6 @@
       }
     };
     
-    // Make widget draggable
     let dragActive = false;
     let offsetX, offsetY;
     
@@ -341,7 +315,6 @@
       }
     };
     
-    // Add keyboard shortcut
     document.addEventListener('keydown', function(e) {
       if (e.ctrlKey && e.shiftKey && e.key === 'X') {
         const s = window.getSelection().toString().trim();
@@ -362,143 +335,98 @@
     });
   }
   
-  // Classify query type to determine appropriate response strategy
   function classifyQuery(query) {
-    // Clean up query
     const cleanQuery = query.toLowerCase().trim();
     
-    // Check if it's a conversation continuation command
     if (/^(go on|keep going|continue|tell me more)$/i.test(cleanQuery)) {
-      return {
-        type: 'conversation_continuation',
-        query: cleanQuery
-      };
+      return { type: 'conversation_continuation', query: cleanQuery };
     }
     
-    // Check if it's a clarification or confusion statement
     if (/^(i(?:'m| am) not sure|i don'?t understand|what do you mean|can you clarify|that doesn'?t make sense|i(?:'m| am) confused)/i.test(cleanQuery)) {
-      return {
-        type: 'clarification_request',
-        query: cleanQuery
-      };
+      return { type: 'clarification_request', query: cleanQuery };
     }
     
-    // Check if it's a greeting
     if (/^(hi|hello|hey|greetings|hi lexi|hello lexi|hey lexi)/i.test(cleanQuery)) {
-      return {
-        type: 'greeting',
-        query: cleanQuery
-      };
+      return { type: 'greeting', query: cleanQuery };
     }
     
-    // Check if it's a farewell
     if (/^(bye|goodbye|see you|farewell|exit)/i.test(cleanQuery)) {
-      return {
-        type: 'farewell',
-        query: cleanQuery
-      };
+      return { type: 'farewell', query: cleanQuery };
     }
     
-    // Check if it's a thank you message
     if (/^(thanks|thank you|ty|thx)/i.test(cleanQuery)) {
-      return {
-        type: 'gratitude',
-        query: cleanQuery
-      };
+      return { type: 'gratitude', query: cleanQuery };
     }
     
-    // Check if it's a self-intro question
     if (/^(who are you|what are you|tell me about yourself|what can you do)/i.test(cleanQuery)) {
-      return {
-        type: 'self_introduction',
-        query: cleanQuery
-      };
+      return { type: 'self_introduction', query: cleanQuery };
     }
     
-    // Check if it's a definition query
-    const defMatch = cleanQuery.match(/^(what|who|define|meaning|definition|explain).*?(?:is|are|does|mean|means|of|by|for)*?\s+["']?([^"'?]+)["']?\??$/i);
-    if (defMatch && defMatch[2]) {
-      return {
-        type: 'definition',
-        term: defMatch[2].trim()
-      };
+    const defMatch = cleanQuery.match(/^(?:what|who|define|meaning|definition|explain).*?(?:is|are|does|mean|means|of|by|for)*?\s+["']?([^"'?]+)["']?\??$/i);
+    if (defMatch && defMatch[1]) {
+      return { type: 'definition', term: defMatch[1].trim() };
     }
     
-    // Check if it's a "What does X mean" query
     const meanMatch = cleanQuery.match(/^what does\s+["']?([^"'?]+)["']?\s+mean\??$/i);
     if (meanMatch && meanMatch[1]) {
-      return {
-        type: 'definition',
-        term: meanMatch[1].trim()
-      };
+      return { type: 'definition', term: meanMatch[1].trim() };
     }
     
-    // Check if it's a "What is X" query
     const isMatch = cleanQuery.match(/^what\s+(?:is|are)\s+["']?([^"'?]+)["']?\??$/i);
     if (isMatch && isMatch[1]) {
-      return {
-        type: 'definition',
-        term: isMatch[1].trim()
-      };
+      return { type: 'definition', term: isMatch[1].trim() };
     }
     
-    // Fall back to general query
-    return {
-      type: 'general_query',
-      query: cleanQuery
-    };
+    return { type: 'general_query', query: cleanQuery };
   }
   
-  // Process user queries
   async function processQuery(query) {
     try {
-      // Check cache first
       if (responseCache[query.toLowerCase()]) {
         document.getElementById('lexi-loader').style.display = 'none';
         addMsg('lexi', responseCache[query.toLowerCase()]);
         return;
       }
 
-      // Classify the query type
       const classification = classifyQuery(query);
       
-      // Add to conversation history
       conversationHistory.push({
         role: 'user',
         content: query
       });
       
-      // Trim history to max size
       if (conversationHistory.length > MAX_HISTORY * 2) {
         conversationHistory.splice(0, 2);
       }
       
-      // Handle each query type
       let response;
       
       switch (classification.type) {
         case 'greeting':
-          response = getRandomResponse([
+          const greetings = [
             "Hello! How can I help you today?",
             "Hi there! I'm ready to assist with definitions or explanations.",
             "Hey! What would you like me to look up for you?"
-          ]);
+          ];
+          response = greetings[Math.floor(Math.random() * greetings.length)];
           break;
           
         case 'farewell':
-          response = getRandomResponse([
+          const farewells = [
             "Goodbye! Feel free to come back anytime you need assistance.",
             "See you later! Just click the bookmarklet when you need me again.",
             "Take care! I'll be here when you need definitions."
-          ]);
+          ];
+          response = farewells[Math.floor(Math.random() * farewells.length)];
           break;
           
         case 'gratitude':
-          response = getRandomResponse([
+          const gratitude = [
             "You're welcome! Happy to help.",
             "Anytime! Let me know if you need anything else.",
             "My pleasure! Feel free to ask if you have more questions."
-          ]);
+          ];
+          response = gratitude[Math.floor(Math.random() * gratitude.length)];
           break;
           
         case 'self_introduction':
@@ -506,33 +434,75 @@
           break;
           
         case 'conversation_continuation':
-          response = handleConversationContinuation();
+          if (conversationHistory.length < 2) {
+            response = "I don't have any additional information on that topic. Could you ask a specific question?";
+          } else {
+            const lastAssistantResponse = findLastAssistantResponse();
+            if (!lastAssistantResponse) {
+              response = "I'm not sure what to elaborate on. Could you ask a specific question?";
+            } else if (lastAssistantResponse.indexOf(":") > 0 && lastAssistantResponse.indexOf(":") < 30) {
+              response = "That covers the basic definition. If you'd like to know more about a specific aspect, please ask directly.";
+            } else {
+              response = "That's all the information I have on this topic. If you have a specific question or would like to know about something else, please let me know.";
+            }
+          }
           break;
           
         case 'clarification_request':
-          response = handleClarificationRequest();
+          const lastAssistantResponse = findLastAssistantResponse();
+          if (!lastAssistantResponse) {
+            response = "What would you like me to clarify? Please ask a specific question.";
+          } else if (lastAssistantResponse.indexOf(":") > 0 && lastAssistantResponse.indexOf(":") < 30) {
+            const term = lastAssistantResponse.split(":")[0].trim();
+            response = `Let me try to explain "${term}" differently: it refers to a concept or term that might be better understood with a specific example or in a particular context. What aspect would you like me to clarify?`;
+          } else {
+            response = "I apologize if my previous explanation wasn't clear. Could you tell me which part you'd like me to explain differently?";
+          }
           break;
           
         case 'definition':
-          response = await handleDefinitionRequest(classification.term);
+          response = await lookupDefinition(classification.term);
           break;
           
         case 'general_query':
         default:
-          response = await handleGeneralQuery(query);
+          const words = query.split(/\s+/);
+          let foundDefn = false;
+          
+          for (let windowSize = 3; windowSize >= 1; windowSize--) {
+            for (let i = 0; i <= words.length - windowSize; i++) {
+              const term = words.slice(i, i + windowSize).join(' ');
+              try {
+                const wikiResult = await fetchWikipediaInfo(term);
+                if (wikiResult) {
+                  response = wikiResult;
+                  foundDefn = true;
+                  break;
+                }
+              } catch (e) {}
+            }
+            if (foundDefn) break;
+          }
+          
+          if (!foundDefn) {
+            const templates = [
+              "That's an interesting topic. While I don't have specific information on that, I'd be happy to help if you have any definition questions.",
+              "I'm not sure I have the right information to answer that properly. Is there a specific term you'd like me to define?",
+              "I don't have enough context to provide a good answer. Could you rephrase your question or ask about a specific word or concept?",
+              "I'm better at providing definitions than answering general questions. Is there a particular term you'd like to understand better?",
+              "I'm designed primarily for definitions and explanations. Could you ask in a way that focuses on understanding a specific term or concept?"
+            ];
+            response = templates[Math.floor(Math.random() * templates.length)];
+          }
           break;
       }
       
-      // Add response to history
       conversationHistory.push({
         role: 'assistant',
         content: response
       });
       
-      // Cache the response
       responseCache[query.toLowerCase()] = response;
-      
-      // Display the response
       document.getElementById('lexi-loader').style.display = 'none';
       addMsg('lexi', response);
       
@@ -543,45 +513,6 @@
     }
   }
   
-  // Handle "keep going" and similar continuation requests
-  function handleConversationContinuation() {
-    // Check if we have enough history
-    if (conversationHistory.length < 2) {
-      return "I don't have any additional information on that topic. Could you ask a specific question?";
-    }
-    
-    // Get the last assistant response
-    const lastAssistantResponse = findLastAssistantResponse();
-    if (!lastAssistantResponse) {
-      return "I'm not sure what to elaborate on. Could you ask a specific question?";
-    }
-    
-    // Check if it was a definition
-    if (lastAssistantResponse.indexOf(":") > 0 && lastAssistantResponse.indexOf(":") < 30) {
-      return "That covers the basic definition. If you'd like to know more about a specific aspect, please ask directly.";
-    }
-    
-    return "That's all the information I have on this topic. If you have a specific question or would like to know about something else, please let me know.";
-  }
-  
-  // Handle requests for clarification
-  function handleClarificationRequest() {
-    // Find the last assistant response
-    const lastAssistantResponse = findLastAssistantResponse();
-    if (!lastAssistantResponse) {
-      return "What would you like me to clarify? Please ask a specific question.";
-    }
-    
-    // If the last response was a definition
-    if (lastAssistantResponse.indexOf(":") > 0 && lastAssistantResponse.indexOf(":") < 30) {
-      const term = lastAssistantResponse.split(":")[0].trim();
-      return `Let me try to explain "${term}" differently: it refers to a concept or term that might be better understood with a specific example or in a particular context. What aspect would you like me to clarify?`;
-    }
-    
-    return "I apologize if my previous explanation wasn't clear. Could you tell me which part you'd like me to explain differently?";
-  }
-  
-  // Find the last assistant response in history
   function findLastAssistantResponse() {
     for (let i = conversationHistory.length - 1; i >= 0; i--) {
       if (conversationHistory[i].role === 'assistant') {
@@ -591,118 +522,70 @@
     return null;
   }
   
-  // Handle definition requests
-  async function handleDefinitionRequest(term) {
-    // Normalize term
+  async function lookupDefinition(term) {
     term = term.trim().replace(/^(the|a|an) /i, '');
     
-    // Single word - try dictionary first
     if (term.split(/\s+/).length === 1) {
       try {
         const dictResult = await fetchDictionaryDefinition(term);
-        if (dictResult) {
-          return dictResult;
-        }
+        if (dictResult) return dictResult;
       } catch (e) {
         console.error("Dictionary API error:", e);
       }
     }
     
-    // Try Wikipedia for phrases or for single words when dictionary fails
     try {
       const wikiResult = await fetchWikipediaInfo(term);
-      if (wikiResult) {
-        return wikiResult;
-      }
+      if (wikiResult) return wikiResult;
     } catch (e) {
       console.error("Wikipedia API error:", e);
     }
     
-    // If both fail, provide a fallback response
     const fallbacks = [
       `I couldn't find a specific definition for "${term}". Could you provide more context or try a different term?`,
       `I'm not finding a clear definition for "${term}". It might be a specialized term or phrase. Could you clarify?`,
       `"${term}" doesn't appear in my reference sources. Perhaps check the spelling or try using different keywords?`
     ];
     
-    return getRandomResponse(fallbacks);
+    return fallbacks[Math.floor(Math.random() * fallbacks.length)];
   }
   
-  // Handle general queries
-  async function handleGeneralQuery(query) {
-    // Try to extract potential terms from the query
-    const words = query.split(/\s+/);
-    
-    // Check if any combination of 1-3 consecutive words returns a Wikipedia result
-    for (let windowSize = 3; windowSize >= 1; windowSize--) {
-      for (let i = 0; i <= words.length - windowSize; i++) {
-        const term = words.slice(i, i + windowSize).join(' ');
-        try {
-          const wikiResult = await fetchWikipediaInfo(term);
-          if (wikiResult) {
-            return wikiResult;
-          }
-        } catch (e) {
-          // Continue to next term combination
-        }
-      }
-    }
-    
-    // If no good matches, provide a conversational response
-    return generateConversationalResponse(query);
-  }
-  
-  // Generate varied conversational responses
-  function generateConversationalResponse(query) {
-    // Set of varied response templates
-    const templates = [
-      "That's an interesting topic. While I don't have specific information on that, I'd be happy to help if you have any definition questions.",
-      "I'm not sure I have the right information to answer that properly. Is there a specific term you'd like me to define?",
-      "I don't have enough context to provide a good answer. Could you rephrase your question or ask about a specific word or concept?",
-      "I'm better at providing definitions than answering general questions. Is there a particular term you'd like to understand better?",
-      "I'm designed primarily for definitions and explanations. Could you ask in a way that focuses on understanding a specific term or concept?"
-    ];
-    
-    return getRandomResponse(templates);
-  }
-  
-  // Fetch definition from dictionary API
   async function fetchDictionaryDefinition(term) {
     const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`);
     
-    if (response.ok) {
-      const data = await response.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const entry = data[0];
-        if (entry.meanings && entry.meanings.length > 0) {
-          const meaning = entry.meanings[0];
-          if (meaning.definitions && meaning.definitions.length > 0) {
-            const def = meaning.definitions[0].definition;
-            const pos = meaning.partOfSpeech ? ` (${meaning.partOfSpeech})` : '';
-            let result = `${term}${pos}: ${def}`;
-            
-            // Add example if available, but keep it concise
-            if (meaning.definitions[0].example) {
-              result += ` Example: "${meaning.definitions[0].example}"`;
-            }
-            
-            // Add synonyms but limit to 3 max
-            if (meaning.synonyms && meaning.synonyms.length > 0) {
-              result += ` Synonyms: ${meaning.synonyms.slice(0, 3).join(', ')}.`;
-            }
-            
-            return result;
-          }
-        }
-      }
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
+    
+    const entry = data[0];
+    if (!entry.meanings || entry.meanings.length === 0) return null;
+    
+    // Fix for the specific issue seen in the logs
+    // The API was returning "mean" definition instead of the requested term
+    if (entry.word.toLowerCase() !== term.toLowerCase()) {
+      return null;
     }
     
-    return null;
+    const meaning = entry.meanings[0];
+    if (!meaning.definitions || meaning.definitions.length === 0) return null;
+    
+    const def = meaning.definitions[0].definition;
+    const pos = meaning.partOfSpeech ? ` (${meaning.partOfSpeech})` : '';
+    let result = `${term}${pos}: ${def}`;
+    
+    if (meaning.definitions[0].example) {
+      result += ` Example: "${meaning.definitions[0].example}"`;
+    }
+    
+    if (meaning.synonyms && meaning.synonyms.length > 0) {
+      result += ` Synonyms: ${meaning.synonyms.slice(0, 3).join(', ')}.`;
+    }
+    
+    return result;
   }
   
-  // Fetch information from Wikipedia with improved handling
   async function fetchWikipediaInfo(term) {
-    // First search for the term
     const wikiSearchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(term)}&format=json&origin=*&srlimit=1`;
     const searchResponse = await fetch(wikiSearchUrl);
     const searchData = await searchResponse.json();
@@ -711,89 +594,41 @@
       return null;
     }
     
+    // Check if the search result title contains our term (case insensitive)
+    const searchResultTitle = searchData.query.search[0].title.toLowerCase();
+    const termLower = term.toLowerCase();
+    if (!searchResultTitle.includes(termLower) && !termLower.includes(searchResultTitle)) {
+      return null; // The search result is not related to our term
+    }
+    
     const pageId = searchData.query.search[0].pageid;
     const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&pageids=${pageId}&format=json&origin=*`;
     const extractResponse = await fetch(extractUrl);
     
-    if (!extractResponse.ok) {
-      return null;
-    }
+    if (!extractResponse.ok) return null;
     
     const extractData = await extractResponse.json();
     const pages = extractData.query.pages;
     
-    if (!pages || !pages[pageId] || !pages[pageId].extract) {
-      return null;
-    }
+    if (!pages || !pages[pageId] || !pages[pageId].extract) return null;
     
     let extract = pages[pageId].extract;
     
-    // Skip "may refer to" disambiguation pages
-    if (extract.toLowerCase().includes("may refer to:")) {
-      return null;
-    }
+    if (extract.toLowerCase().includes("may refer to:")) return null;
     
-    // Summarize the extract to 1-2 sentences
     const sentences = extract.match(/[^.!?]+[.!?]+/g) || [];
     
-    // If there are sentences to work with
-    if (sentences.length > 0) {
-      // Check if it looks like a list
-      const firstSentence = sentences[0];
-      if (firstSentence.includes(",") && firstSentence.includes(" or ") && firstSentence.includes(" and ")) {
-        // This might be a list, so just provide a brief note
-        return `"${term}" appears to have multiple meanings. Please specify which context you're interested in.`;
-      }
-      
-      // Otherwise, provide 1-2 sentences
-      if (sentences.length === 1) {
-        return sentences[0];
-      } else {
-        // Check if second sentence adds value
-        if (sentences[1].length < 100) {
-          return sentences[0] + " " + sentences[1];
-        } else {
-          return sentences[0];
-        }
-      }
-    }
+    if (sentences.length === 0) return extract.length < 150 ? extract : null;
     
-    // Fallback for short extracts
-    if (extract.length < 150) {
-      return extract;
-    }
-    
-    // For longer extracts, make a summary
-    return summarizeText(extract, 2);
-  }
-  
-  // Summarize text to a specified number of sentences
-  function summarizeText(text, maxSentences = 2) {
-    // Split into sentences
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || [];
-    
-    if (sentences.length <= maxSentences) {
-      return text;
-    }
-    
-    // Find most important sentences (simple heuristic - first sentence + one with most matches to search term)
     const firstSentence = sentences[0];
-    
-    // For long first sentences, see if we can just use that
-    if (firstSentence.length > 100) {
-      return firstSentence;
+    if (firstSentence.includes(",") && firstSentence.includes(" or ") && firstSentence.includes(" and ")) {
+      return `"${term}" appears to have multiple meanings. Please specify which context you're interested in.`;
     }
     
-    return sentences.slice(0, maxSentences).join(' ');
+    return sentences.length === 1 ? sentences[0] : 
+           sentences[1].length < 100 ? sentences[0] + " " + sentences[1] : sentences[0];
   }
   
-  // Get a random response from an array of options
-  function getRandomResponse(responses) {
-    if (!responses || !responses.length) return "I'm not sure how to respond to that.";
-    return responses[Math.floor(Math.random() * responses.length)];
-  }
-  
-  // Add a message to the conversation
   function addMsg(sender, text) {
     document.getElementById('lexi-loader').style.display = 'none';
     
@@ -815,7 +650,6 @@
     document.getElementById('lexi-body').scrollTop = document.getElementById('lexi-body').scrollHeight;
   }
   
-  // Show toast notification
   function showToast(message) {
     var t = document.createElement('div');
     t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(95,99,242,0.9);color:white;padding:8px 16px;border-radius:4px;font-family:Arial,sans-serif;z-index:10000;animation:fadeIn 0.3s;';
@@ -825,15 +659,12 @@
     setTimeout(function() {
       t.style.opacity = '0';
       t.style.transition = 'opacity 0.3s ease';
-      setTimeout(function() {
+      setTimeout(function(){
         document.body.removeChild(t);
       }, 300);
     }, 2000);
   }
   
-  // Expose global toggle function
   window.slimScreenToggle = toggleWidget;
-  
-  // Auto-initialize on script load
   showWidget();
 })();
