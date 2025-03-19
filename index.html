@@ -177,7 +177,7 @@
       <p>
         <strong>To use SlimScreen on any webpage:</strong> Drag this bookmarklet to your bookmarks bar:
       </p>
-      <a id="bookmarklet" href="javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://slim-screen.vercel.app/slimscreen.js';s.onload=function(){window.slimScreenLoaded=true;if(window.slimScreenToggle){window.slimScreenToggle();}};document.body.appendChild(s);}else{if(window.slimScreenToggle){window.slimScreenToggle();}}})();">Lexi: Research Assistant</a>
+      <a id="bookmarklet" href="javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://slim-screen.vercel.app/lexi-slimscreen.js';s.onload=function(){window.slimScreenLoaded=true;if(window.slimScreenToggle){window.slimScreenToggle();}};document.body.appendChild(s);}else{if(window.slimScreenToggle){window.slimScreenToggle();}}})();">Lexi: Research Assistant</a>
     </div>
     
     <div class="feature-list">
@@ -200,7 +200,7 @@
       </div>
       <div class="feature-item">
         <div class="feature-icon">5</div>
-        <span>Click the bookmarklet again or the X button to close Lexi</span>
+        <span>Use the minimize button (<span class="shortcut">━</span>) to shrink Lexi to a compact bar</span>
       </div>
     </div>
     
@@ -210,6 +210,7 @@
         <li><strong>Instant Definitions:</strong> Highlight text and press <span class="shortcut">Ctrl+Shift+X</span> for clear, concise explanations</li>
         <li><strong>Sleek Design:</strong> Dark mode interface with modern aesthetics and minimal footprint</li>
         <li><strong>Fully Draggable:</strong> Position the widget anywhere on your screen for optimal viewing</li>
+        <li><strong>Minimize Option:</strong> Keep Lexi available but out of the way as a compact bar</li>
         <li><strong>Save Conversations:</strong> Export your insights with one click for future reference</li>
         <li><strong>Page Context:</strong> Lexi can summarize the current page to help with your research</li>
       </ul>
@@ -233,6 +234,6 @@
   </div>
 
   <!-- Load the script -->
-  <script src="slimscreen.js"></script>
+  <script src="lexi-slimscreen.js"></script>
 </body>
 </html>
