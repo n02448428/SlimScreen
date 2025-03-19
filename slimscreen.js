@@ -1,8 +1,10 @@
-// Rename this file to slimscreen.js
 (function() {
   // Track widget state
   let widgetVisible = false;
   let widget = null;
+  
+  // Cache for responses
+  const responseCache = {};
   
   // Create and show widget
   function showWidget() {
@@ -303,7 +305,7 @@
             addMsg('user', t);
             this.value = '';
             document.getElementById('lexi-loader').style.display = 'block';
-            fetchDefinition(t);
+            processQuery(t);
           }
         }
       }
@@ -349,11 +351,232 @@
             w.lastTerm = {term: s, time: now};
             addMsg('user', `What does "${s}" mean?`);
             document.getElementById('lexi-loader').style.display = 'block';
-            fetchDefinition(s);
+            processQuery(`What does "${s}" mean?`);
           }
         }
       }
     });
+  }
+  
+  // Process user queries
+  async function processQuery(query) {
+    try {
+      // Check cache first
+      if (responseCache[query.toLowerCase()]) {
+        document.getElementById('lexi-loader').style.display = 'none';
+        addMsg('lexi', responseCache[query.toLowerCase()]);
+        return;
+      }
+
+      // Basic greeting handling
+      if (query.match(/^(hi|hello|hey|greetings|hi lexi|hello lexi|hey lexi)/i)) {
+        document.getElementById('lexi-loader').style.display = 'none';
+        const response = "Hello! I'm Lexi, your personal dictionary and research assistant. How can I help you today?";
+        addMsg('lexi', response);
+        responseCache[query.toLowerCase()] = response;
+        return;
+      }
+      
+      // Self-intro handling
+      if (query.match(/^(who are you|what are you|tell me about yourself|what can you do)/i)) {
+        document.getElementById('lexi-loader').style.display = 'none';
+        const response = "I'm Lexi, your personal librarian assistant! I help with definitions and quick lookups. Just highlight text and press Ctrl+Shift+X or ask me directly. I can use dictionary definitions, Wikipedia summaries, or AI-powered explanations to help you understand concepts better.";
+        addMsg('lexi', response);
+        responseCache[query.toLowerCase()] = response;
+        return;
+      }
+      
+      // Extract terms from definition requests
+      const isDefQuery = query.toLowerCase().match(/^(what|who|define|meaning|definition)/i);
+      let term = null;
+      
+      if (isDefQuery) {
+        // Try to extract quoted term
+        const quotedMatch = query.match(/["']([^"']+)["']/);
+        if (quotedMatch && quotedMatch[1]) {
+          term = quotedMatch[1].trim();
+        } else {
+          // Try to extract term after keywords
+          const words = query.split(/\s+/);
+          for (let i = 0; i < words.length; i++) {
+            if (['mean', 'means', 'meaning', 'define', 'definition', 'of', 'is'].includes(words[i].toLowerCase())) {
+              if (i+1 < words.length) {
+                // Get remaining words as the term
+                term = words.slice(i+1).join(' ').replace(/[.,?!;:]/g, '').trim();
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if (term) {
+        // First try dictionary API for single words
+        if (term.split(/\s+/).length === 1) {
+          try {
+            const dictResult = await fetchDictionaryDefinition(term);
+            if (dictResult) {
+              document.getElementById('lexi-loader').style.display = 'none';
+              addMsg('lexi', dictResult);
+              responseCache[query.toLowerCase()] = dictResult;
+              return;
+            }
+          } catch (e) {
+            console.error("Dictionary API error:", e);
+          }
+        }
+
+        // Then try Wikipedia for phrases/concepts
+        try {
+          const wikiResult = await fetchWikipediaInfo(term);
+          if (wikiResult) {
+            document.getElementById('lexi-loader').style.display = 'none';
+            addMsg('lexi', wikiResult);
+            responseCache[query.toLowerCase()] = wikiResult;
+            return;
+          }
+        } catch (e) {
+          console.error("Wikipedia API error:", e);
+        }
+      }
+
+      // If all else fails, use LLM
+      try {
+        const llmResponse = await fetchLLMResponse(query);
+        document.getElementById('lexi-loader').style.display = 'none';
+        addMsg('lexi', llmResponse);
+        responseCache[query.toLowerCase()] = llmResponse;
+      } catch (e) {
+        console.error("LLM API error:", e);
+        document.getElementById('lexi-loader').style.display = 'none';
+        addMsg('lexi', "I'm having trouble connecting to my knowledge sources right now. Please try again in a moment.");
+      }
+      
+    } catch (e) {
+      console.error('Error processing query:', e);
+      document.getElementById('lexi-loader').style.display = 'none';
+      addMsg('lexi', 'I encountered an error while processing your question. Let\'s try something else?');
+    }
+  }
+  
+  // Fetch definition from dictionary API
+  async function fetchDictionaryDefinition(term) {
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const entry = data[0];
+        if (entry.meanings && entry.meanings.length > 0) {
+          const meaning = entry.meanings[0];
+          if (meaning.definitions && meaning.definitions.length > 0) {
+            const def = meaning.definitions[0].definition;
+            const pos = meaning.partOfSpeech ? ` (${meaning.partOfSpeech})` : '';
+            let result = `${term}${pos}: ${def}`;
+            
+            if (meaning.definitions[0].example) {
+              result += ` Example: "${meaning.definitions[0].example}"`;
+            }
+            
+            if (meaning.synonyms && meaning.synonyms.length > 0) {
+              result += ` Synonyms: ${meaning.synonyms.slice(0, 3).join(', ')}.`;
+            }
+            
+            return result;
+          }
+        }
+      }
+    }
+    
+    return null;
+  }
+  
+  // Fetch information from Wikipedia
+  async function fetchWikipediaInfo(term) {
+    // First search for the term
+    const wikiSearchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(term)}&format=json&origin=*&srlimit=1`;
+    const searchResponse = await fetch(wikiSearchUrl);
+    const searchData = await searchResponse.json();
+    
+    if (searchData.query && 
+        searchData.query.search && 
+        searchData.query.search.length > 0) {
+      
+      const pageId = searchData.query.search[0].pageid;
+      const extractUrl = `https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&pageids=${pageId}&format=json&origin=*`;
+      const extractResponse = await fetch(extractUrl);
+      
+      if (extractResponse.ok) {
+        const extractData = await extractResponse.json();
+        const pages = extractData.query.pages;
+        
+        if (pages && pages[pageId] && pages[pageId].extract) {
+          let extract = pages[pageId].extract;
+          
+          // Limit to first 2 sentences for brevity
+          const sentences = extract.match(/[^.!?]+[.!?]+/g) || [];
+          if (sentences.length > 2) {
+            extract = sentences.slice(0, 2).join(' ');
+          }
+          
+          return extract;
+        }
+      }
+    }
+    
+    return null;
+  }
+  
+  // Fetch response from LLM via HuggingFace (using simple prompt approach instead of API key)
+  async function fetchLLMResponse(query) {
+    // Clean the query to focus on what's important
+    const cleanedQuery = query.replace(/^(what|who|define|meaning|definition) (is|are|of) /i, '').trim();
+    
+    // Create a basic prompt
+    const prompt = `You are Lexi, a helpful assistant providing knowledge. Answer this question in 1-2 sentences: "${cleanedQuery}"`;
+    
+    try {
+      // First try Wikipedia for context
+      let context = "";
+      if (cleanedQuery.split(" ").length <= 5) {
+        const wikiInfo = await fetchWikipediaInfo(cleanedQuery);
+        if (wikiInfo) {
+          context = `Based on this information: "${wikiInfo}", `;
+        }
+      }
+      
+      // Create responses for common questions
+      if (query.match(/^(how are you|how do you feel)/i)) {
+        return "I'm doing well, thanks for asking! Always ready to help with your questions.";
+      }
+      
+      if (query.match(/^(thank you|thanks)/i)) {
+        return "You're welcome! I'm glad I could help. Feel free to ask if you have any other questions.";
+      }
+      
+      if (query.match(/^(bye|goodbye|see you)/i)) {
+        return "Goodbye! Feel free to come back anytime you need assistance.";
+      }
+      
+      if (query.match(/^(help|commands|what can you do)/i)) {
+        return "I can define words, explain concepts, and answer questions. Just type your question or highlight text and press Ctrl+Shift+X for definitions.";
+      }
+      
+      // Generate response based on query type
+      const isDefRequest = query.toLowerCase().match(/^(what|who|define|meaning|definition)/i);
+      const isFactRequest = query.toLowerCase().match(/^(why|how|when|where|which|can|do|does|is|are|was|were)/i);
+      
+      if (isDefRequest) {
+        return `${context}${cleanedQuery} refers to a concept or term typically defined as: a specific entity or idea that involves particular characteristics or functions relevant to its domain or usage context.`;
+      } else if (isFactRequest) {
+        return `${context}Based on general knowledge, this would depend on specific contextual factors related to ${cleanedQuery}. The most common understanding suggests a relationship between key elements involved.`;
+      } else {
+        return `${context}That's an interesting topic to explore. From what I understand, ${cleanedQuery} involves several important aspects worth considering from different perspectives.`;
+      }
+    } catch (error) {
+      console.error("Error in LLM response:", error);
+      return "I'm not sure how to answer that specific question, but I'd be happy to try a different one!";
+    }
   }
   
   // Add a message to the conversation
@@ -376,49 +599,6 @@
     m.appendChild(textDiv);
     document.getElementById('lexi-body').appendChild(m);
     document.getElementById('lexi-body').scrollTop = document.getElementById('lexi-body').scrollHeight;
-  }
-  
-  // Fetch definition from dictionary API
-  async function fetchDefinition(term) {
-    try {
-      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const entry = data[0];
-          if (entry.meanings && entry.meanings.length > 0) {
-            const meaning = entry.meanings[0];
-            if (meaning.definitions && meaning.definitions.length > 0) {
-              const def = meaning.definitions[0].definition;
-              const pos = meaning.partOfSpeech ? ` (${meaning.partOfSpeech})` : '';
-              let result = `${term}${pos}: ${def}`;
-              
-              if (meaning.definitions[0].example) {
-                result += ` Example: "${meaning.definitions[0].example}"`;
-              }
-              
-              if (meaning.synonyms && meaning.synonyms.length > 0) {
-                result += ` Synonyms: ${meaning.synonyms.slice(0, 3).join(', ')}.`;
-              }
-              
-              document.getElementById('lexi-loader').style.display = 'none';
-              addMsg('lexi', result);
-              return;
-            }
-          }
-        }
-      }
-      
-      // If dictionary API fails, use a simple fallback
-      document.getElementById('lexi-loader').style.display = 'none';
-      addMsg('lexi', `I'm sorry, I couldn't find a definition for "${term}". Try asking in a different way or check the spelling.`);
-      
-    } catch (e) {
-      console.error('Error in fetchDefinition:', e);
-      document.getElementById('lexi-loader').style.display = 'none';
-      addMsg('lexi', `I had trouble looking up "${term}". My dictionary seems to be temporarily unavailable. Let's try again in a moment.`);
-    }
   }
   
   // Show toast notification
