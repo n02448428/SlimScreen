@@ -166,7 +166,7 @@
       <p>
         <strong>To use Lexi on any webpage:</strong> Drag this bookmarklet to your bookmarks bar:
       </p>
-      <a id="bookmarklet" href="javascript:(function(){if(!window.slimScreenLoaded){var s=document.createElement('script');s.src='https://slim-screen.vercel.app/lexi-core.js';s.onload=function(){window.slimScreenLoaded=true;if(window.slimScreenToggle){window.slimScreenToggle();}};document.body.appendChild(s);}else{if(window.slimScreenToggle){window.slimScreenToggle();}}})();">Lexi: Research Assistant</a>
+      <a id="bookmarklet" href="javascript:(function(){if(!window.lexiLoaded){var script=document.createElement('script');script.src='https://slim-screen.vercel.app/lexi-core.js';script.onload=function(){window.lexiLoaded=true;if(typeof window.slimScreenToggle==='function'){window.slimScreenToggle();}};document.body.appendChild(script);}else{if(typeof window.slimScreenToggle==='function'){window.slimScreenToggle();}}})();">Lexi: Research Assistant</a>
     </div>
     
     <div class="feature-list">

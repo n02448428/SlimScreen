@@ -5,9 +5,7 @@
   let currentPageContext = {};
   
   function debug(message) {
-    if (window.debugMode) {
-      console.log(`[SlimScreen] ${message}`);
-    }
+    console.log(`[Lexi] ${message}`);
   }
   
   function analyzePageContext() {
@@ -1216,7 +1214,8 @@
     initialize();
   }
   
+  // Make functions and flags available globally for bookmarklet
   window.slimScreenToggle = toggleWidget;
-  window.slimScreenLoaded = true;
+  window.lexiLoaded = true; // Changed from slimScreenLoaded to lexiLoaded
   
 })();
