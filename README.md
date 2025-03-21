@@ -19,7 +19,7 @@ SlimScreen AI is designed to be a minimal yet powerful assistant that helps you 
 ### On Desktop
 
 1. **Add the Bookmarklet:**  
-   - Visit our homepage and click the **"Copy Bookmarklet"** button.
+   - Visit our homepage (https://slim-screen.vercel.app/).
    - Drag the bookmarklet from your bookmarks bar into the desired location.
    
 2. **Activate on Any Page:**  
@@ -50,10 +50,10 @@ SlimScreen AI is designed to be a minimal yet powerful assistant that helps you 
 ## Installation & Getting Started
 
 1. **Visit the Homepage:**  
-   Go to [yourdomain.com](https://yourdomain.com) (replace with your actual URL) where you’ll find the **"Copy Bookmarklet"** button and detailed instructions.
+   Go to https://slim-screen.vercel.app/ where you’ll find detailed instructions.
 
 2. **Add the Bookmarklet:**  
-   Follow the on-screen steps for your device—desktop users can drag the bookmarklet, while mobile users can copy and set up their bookmark with ease.
+   Follow the on-screen steps.
 
 3. **Enjoy Instant Insights:**  
    Navigate to any webpage or document, highlight text, and let your friendly librarian guide you through definitions and context in real time.
